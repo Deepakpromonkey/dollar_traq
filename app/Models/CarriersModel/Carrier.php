@@ -2,13 +2,14 @@
 
 namespace App\Models\CarriersModel;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Modules\Base\Models\BaseModel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
-class Carrier extends Model
+class Carrier extends BaseModel
 {
     protected $fillable = [
         'id',
@@ -41,70 +42,79 @@ class Carrier extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    public static function format($row)
-{
-    if (!$row) {
+
+    public static function format($row){
+        if (!$row) {
+            return $row;
+        }
+
+        foreach ($row->toArray() as $key => $value) {
+
+            // format dates
+            if (
+                str_contains($key, 'date') ||
+                str_contains($key, 'created_at') ||
+                str_contains($key, 'updated_at') ||
+                str_contains($key, 'canceled') ||
+                str_contains($key, 'changed')
+            ) {
+
+                if (!empty($value) && strtotime($value)) {
+
+                    $row->$key = date('d-m-Y', strtotime($value));
+                }
+            }
+            // format names/text
+            if (
+                str_contains($key, 'legal_name') ||
+                str_contains($key, 'city') ||
+                str_contains($key, 'state') ||
+                str_contains($key, 'address') ||
+                str_contains($key, 'type') ||
+                str_contains($key, 'desc')
+            ) {
+
+                if (!empty($value) && is_string($value)) {
+
+                    $row->$key = ucwords($value);
+                }
+            }
+
+            // format float values
+            if (
+                str_contains($key, 'amount') ||
+                str_contains($key, 'price') ||
+                str_contains($key, 'cost') ||
+                str_contains($key, 'limit')
+            ) {
+
+                if (is_numeric($value)) {
+
+                    $row->$key = number_format((float)$value, 2, '.', '');
+                }
+            }
+        }
+
         return $row;
     }
 
-    foreach ($row->toArray() as $key => $value) {
+    public static function search(Request $request){
 
-        // format dates
-        if (
-            str_contains($key, 'date') ||
-            str_contains($key, 'created_at') ||
-            str_contains($key, 'updated_at') ||
-            str_contains($key, 'canceled') ||
-            str_contains($key, 'changed')
-        ) {
+        $cacheKey = 'carrier_search_' . md5(json_encode([
+            'dot_number' => $request->dot_number,
+            'docket_number' => $request->docket_number,
+            'telephone_number' => $request->telephone_number,
+            'email_address' => $request->email_address,
+            'vin' => $request->vin,
+            'physical_address' => $request->physical_address,
+            'page' => $request->page ?? 1,
+        ]));
 
-            if (!empty($value) && strtotime($value)) {
+        // cache for forever
+        return Cache::rememberForever($cacheKey, function () use ($request) {
 
-                $row->$key = date('d-m-Y', strtotime($value));
-            }
-        }
-        // format names/text
-        if (
-            str_contains($key, 'legal_name') ||
-            str_contains($key, 'city') ||
-            str_contains($key, 'state') ||
-            str_contains($key, 'address') ||
-            str_contains($key, 'type') ||
-            str_contains($key, 'desc')
-        ) {
-
-            if (!empty($value) && is_string($value)) {
-
-                $row->$key = ucwords($value);
-            }
-        }
-
-        // format float values
-        if (
-            str_contains($key, 'amount') ||
-            str_contains($key, 'price') ||
-            str_contains($key, 'cost') ||
-            str_contains($key, 'limit')
-        ) {
-
-            if (is_numeric($value)) {
-
-                $row->$key = number_format((float)$value, 2, '.', '');
-            }
-        }
-    }
-
-    return $row;
-}
-
-
-   
-
-   public static function search(Request $request)
-        {
             $query = self::query();
 
-            
             $searchableFields = [
                 'docket_number',
                 'dot_number',
@@ -127,7 +137,6 @@ class Carrier extends Model
 
                     $value = trim($request->{$field});
 
-                  
                     if (in_array($field, [
                         'dot_number',
                         'docket_number',
@@ -145,7 +154,6 @@ class Carrier extends Model
                 }
             }
 
-           
             if ($request->filled('physical_address')) {
 
                 $query->whereHas('contactHistories', function ($q) use ($request) {
@@ -154,62 +162,63 @@ class Carrier extends Model
                 });
             }
 
-            if ($request->filled('vin')) {
+        if ($request->filled('vin')) {
 
-                $query->whereHas('fleetSummaries.equipmentHistories', function ($q) use ($request) {
+            $query->whereHas('fleetSummaries.equipmentHistories', function ($q) use ($request) {
 
-                    $q->where('vin', 'LIKE', '%' . $request->vin . '%');
-                });
-            }
+                $q->where('vin', 'LIKE', '%' . $request->vin . '%');
+            });
+        }
 
-           
-            if (!$query->exists()) {
+        if (!$query->exists()) {
 
-                self::fetchAndStore($request);
+            self::fetchAndStore($request);
 
-                $query = self::query();
+            $query = self::query();
 
-                foreach ($searchableFields as $field) {
+            foreach ($searchableFields as $field) {
 
-                    if ($request->filled($field)) {
+                if ($request->filled($field)) {
 
-                        $value = trim($request->{$field});
+                    $value = trim($request->{$field});
 
-                        if (in_array($field, [
-                            'dot_number',
-                            'docket_number',
-                            'telephone_number',
-                            'ein',
-                            'duns'
-                        ])) {
+                    if (in_array($field, [
+                        'dot_number',
+                        'docket_number',
+                        'telephone_number',
+                        'ein',
+                        'duns'
+                    ])) {
 
-                            $query->where($field, $value);
+                        $query->where($field, $value);
 
-                        } else {
+                    } else {
 
-                            $query->where($field, 'LIKE', '%' . $value . '%');
-                        }
+                        $query->where($field, 'LIKE', '%' . $value . '%');
                     }
                 }
             }
-           $data = $query->with([
-                'basics',
-                'crashes',
-                'inspections',
-                'fleetSummaries.equipmentHistories',
-                'insurances',
-                'contactChanges',
-                'contactHistories',
-                'companySnapshots'
-            ])->paginate($request->per_page ?? 15);
-
-            $data->getCollection()->transform(function ($row) {
-
-                return self::format($row);
-            });
-
-            return $data;
         }
+
+        $data = $query->with([
+            'basics',
+            'crashes',
+            'inspections',
+            'fleetSummaries.equipmentHistories',
+            'insurances',
+            'contactChanges',
+            'contactHistories',
+            'companySnapshots'
+        ])->paginate($request->per_page ?? 15);
+
+        $data->getCollection()->transform(function ($row) {
+
+            return self::format($row);
+        });
+
+        return $data;
+    });
+}
 
    public static function fetchAndStore(Request $request)
     {
