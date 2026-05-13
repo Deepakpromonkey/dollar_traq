@@ -122,6 +122,19 @@ return [
             'driver' => 'monolog',
             'handler' => NullHandler::class,
         ],
+        'fmcsa' => [
+
+            'driver' => 'daily',
+
+            'path' => storage_path('logs/fmcsa/fmcsa.log'),
+
+            'level' => env('LOG_LEVEL', 'debug'),
+
+            'days' => 30,
+
+            'replace_placeholders' => true,
+
+        ],
 
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),

@@ -4,381 +4,204 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ImportCarrierCsv extends Command
 {
     protected $signature = 'import:carriers';
 
-    protected $description = 'Import carriers CSV into all related tables';
+    protected $description = 'Ultra Fast Carrier CSV Import';
+
+    private int $batchSize = 200;
 
     public function handle()
     {
-        ini_set('memory_limit', '-1');
+        ini_set('memory_limit', '1024M');
+
+        gc_enable();
+
+        ini_set('auto_detect_line_endings', true);
 
         $path = storage_path('app/public/carriers.csv');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
 
             $this->error("CSV file not found: {$path}");
+
             return;
         }
 
         $handle = fopen($path, 'r');
 
-        if (!$handle) {
+        if (! $handle) {
 
-            $this->error("Unable to open CSV");
+            $this->error('Unable to open CSV');
+
             return;
         }
 
         $header = fgetcsv($handle);
 
-        if (!$header) {
+        if (! $header) {
 
-            $this->error("CSV is empty");
+            $this->error('CSV is empty');
+
             fclose($handle);
+
             return;
         }
 
-        $this->info('CSV Loaded Successfully');
-        $this->info('Starting Import...');
+        $this->info('CSV Loaded...');
+        $this->info('Starting Ultra Fast Sync...');
+
+        $carriers = [];
 
         $count = 0;
+
         $failed = 0;
 
         while (($row = fgetcsv($handle)) !== false) {
 
             try {
 
-                if (count($header) != count($row)) {
+                if (count($header) !== count($row)) {
                     continue;
                 }
 
                 $data = array_combine($header, $row);
 
-                $dotNumber = trim($data['DOT Number'] ?? '');
+                $dotNumber = $this->number($data['DOT Number'] ?? null);
 
                 if (empty($dotNumber)) {
                     continue;
                 }
 
-                DB::transaction(function () use ($data, &$count) {
+                $now = now();
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | INSERT CARRIER
-                    |--------------------------------------------------------------------------
-                    */
+                $carriers[] = [
 
-                    $carrierId = DB::table('carriers')->insertGetId([
+                    'dot_number' => $dotNumber,
 
-                        'row_id' => Str::uuid(),
+                    'docket_number' => $this->number($data['Docket Number'] ?? null),
 
-                        'dot_number' => $this->number($data['DOT Number'] ?? null),
+                    'legal_name' => $this->string($data['Legal Name'] ?? null),
 
-                        'docket_number' => $this->number($data['Docket Number'] ?? null),
+                    'dba_name' => $this->string($data['DBA Name'] ?? null),
 
-                        'legal_name' => $this->string($data['Legal Name'] ?? null),
+                    'telephone_number' => $this->phone($data['Business Phone'] ?? null),
 
-                        'dba_name' => $this->string($data['DBA Name'] ?? null),
+                    'cellphone_number' => $this->phone($data['Cell Phone'] ?? null),
 
-                        'telephone_number' => $this->phone($data['Business Phone'] ?? null),
+                    'company_contact_primary' => $this->string($data['Company Representative 1'] ?? null),
 
-                        'cellphone_number' => $this->phone($data['Cell Phone'] ?? null),
+                    'company_contact_secondary' => $this->string($data['Company Representative 2'] ?? null),
 
-                        'company_contact_primary' => $this->string($data['Company Representative 1'] ?? null),
+                    'email_address' => $this->string($data['Email Address'] ?? null),
 
-                        'company_contact_secondary' => $this->string($data['Company Representative 2'] ?? null),
+                    'usdot_status' => $this->string($data['Safety Rating Code'] ?? null),
 
-                        'email_address' => $this->string($data['Email Address'] ?? null),
+                    'safety_rating_effective_date' => $this->date($data['Safety Rating Effective Date'] ?? null),
 
-                        'usdot_status' => $this->string($data['Safety Rating Code'] ?? null),
+                    'created_at' => $now,
 
-                        'safety_rating_effective_date' =>
-                            $this->date($data['Safety Rating Effective Date'] ?? null),
+                    'updated_at' => $now,
+                ];
 
-                        'created_at' => now(),
+                if (count($carriers) >= $this->batchSize) {
 
-                        'updated_at' => now(),
-                    ]);
+                    $this->insertBatch($carriers);
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | FLEET SUMMARY
-                    |--------------------------------------------------------------------------
-                    */
+                    $count += count($carriers);
 
-                    $fleetId = DB::table('carrier_fleet_summaries')->insertGetId([
+                    $this->info("Imported: {$count}");
 
-                        'row_id' => Str::uuid(),
+                    $carriers = [];
 
-                        'carrier_id' => $carrierId,
+                    unset($row, $data);
 
-                        'total_trucks' =>
-                            $this->number($data['Total Number Of Trucks'] ?? null),
+                    gc_collect_cycles();
+                }
 
-                        'total_power_units' =>
-                            $this->number($data['Total Number Of Power Units'] ?? null),
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | INSURANCE
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $insuranceId = DB::table('carrier_insurances')->insertGetId([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'insurance_bipd_on_file' =>
-                            $this->number($data['BIPD On File'] ?? null),
-
-                        'insurance_cargo_on_file' =>
-                            $this->number($data['Cargo On File'] ?? null),
-
-                        'insurance_bond_on_file' =>
-                            $this->number($data['Bond Surety On File'] ?? null),
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | BASICS
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_basics')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | CRASHES
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_crashes')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | INSPECTIONS
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_inspections')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | CONTACT CHANGES
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $contactChangeId = DB::table('carrier_contact_changes')->insertGetId([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | CONTACT HISTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_contact_histories')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'physical_address_city' =>
-                            $this->string($data['Business City'] ?? null),
-
-                        'physical_address_state' =>
-                            $this->string($data['Business State'] ?? null),
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | COMPANY SNAPSHOT
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_company_snapshots')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'carrier_id' => $carrierId,
-
-                        'created_at' => now(),
-
-                        'updated_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | CONTACT HISTORY LOG
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_contact_history_logs')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'contact_change_id' => $contactChangeId,
-
-                        'created_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | ADDRESS IDS
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_address_ids')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'contact_change_id' => $contactChangeId,
-
-                        'created_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | INSURANCE HISTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_insurance_histories')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'insurance_id' => $insuranceId,
-
-                        'created_at' => now(),
-                    ]);
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | EQUIPMENT HISTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                    DB::table('carrier_equipment_histories')->insert([
-
-                        'row_id' => Str::uuid(),
-
-                        'fleet_id' => $fleetId,
-
-                        'created_at' => now(),
-                    ]);
-
-                    $count++;
-
-                    $this->info("Imported Carrier DOT: " . ($data['DOT Number'] ?? 'N/A'));
-                });
-
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
 
                 $failed++;
 
                 $this->error(
-                    "Failed DOT " .
-                    ($data['DOT Number'] ?? 'N/A') .
-                    " => " .
+                    'FAILED => '.
+                    ($data['DOT Number'] ?? 'N/A').
+                    ' => '.
                     $e->getMessage()
                 );
             }
         }
 
+        if (! empty($carriers)) {
+
+            $this->insertBatch($carriers);
+
+            $count += count($carriers);
+
+            unset($carriers);
+
+            gc_collect_cycles();
+        }
+
         fclose($handle);
 
-        $this->info("====================================");
-        $this->info("IMPORT COMPLETED");
+        $this->info('===================================');
         $this->info("SUCCESS: {$count}");
         $this->info("FAILED: {$failed}");
-        $this->info("====================================");
+        $this->info('IMPORT COMPLETED');
+        $this->info('===================================');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | HELPERS
-    |--------------------------------------------------------------------------
-    */
-
-    private function string($value)
+    private function insertBatch(array $carriers): void
     {
-        return !empty($value)
-            ? trim($value)
-            : null;
+        DB::table('carriers')->upsert(
+
+            $carriers,
+
+            ['dot_number'],
+
+            [
+                'docket_number',
+                'legal_name',
+                'dba_name',
+                'telephone_number',
+                'cellphone_number',
+                'company_contact_primary',
+                'company_contact_secondary',
+                'email_address',
+                'usdot_status',
+                'safety_rating_effective_date',
+                'updated_at',
+            ]
+        );
     }
 
-    private function number($value)
+    private function string($value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function number($value): ?string
     {
         if ($value === '' || $value === null) {
             return null;
         }
 
-        return preg_replace('/[^0-9]/', '', $value);
+        $value = preg_replace('/[^0-9]/', '', (string) $value);
+
+        return $value !== '' ? $value : null;
     }
 
-    private function phone($value)
+    private function phone($value): ?string
     {
-        if (empty($value)) {
-            return null;
-        }
-
-        return preg_replace('/[^0-9]/', '', $value);
+        return $this->number($value);
     }
 
-    private function date($value)
+    private function date($value): ?string
     {
         if (empty($value)) {
             return null;
@@ -388,7 +211,7 @@ class ImportCarrierCsv extends Command
 
             return date('Y-m-d', strtotime($value));
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
 
             return null;
         }

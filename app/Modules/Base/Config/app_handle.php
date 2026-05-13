@@ -14,5 +14,6 @@ return [
         'type' => 'custom',
         'model' => ['model' => 'App\Models\CarriersModel\Carrier', 'method' => 'search'],
     ],
+    
 
 ];
