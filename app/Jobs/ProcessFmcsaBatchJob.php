@@ -95,6 +95,9 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 $response = Http::timeout(60)
                     ->acceptJson()
                     ->get($url);
+                Log::channel('fmcsa')->info(
+                    "API RESPONSE => {$response}"
+                );
 
                 if (! $response->successful()) {
 

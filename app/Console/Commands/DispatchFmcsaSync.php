@@ -31,7 +31,9 @@ class DispatchFmcsaSync extends Command
 
                 $q->whereNull('carrier_sync_states.id')
 
-                    ->orWhereNull('carrier_sync_states.next_sync_at')
+                    ->orWhereNull(
+                        'carrier_sync_states.next_sync_at'
+                    )
 
                     ->orWhere(
                         'carrier_sync_states.next_sync_at',
@@ -42,8 +44,9 @@ class DispatchFmcsaSync extends Command
 
             ->where(function ($q) {
 
-                $q->whereNull('carrier_sync_states.is_syncing')
-
+                $q->whereNull(
+                    'carrier_sync_states.is_syncing'
+                )
                     ->orWhere(
                         'carrier_sync_states.is_syncing',
                         false
@@ -74,8 +77,11 @@ class DispatchFmcsaSync extends Command
         $this->newLine();
 
         $this->info('================================');
+
         $this->info("TOTAL BATCHES: {$total}");
+
         $this->info('FMCSA DISPATCH COMPLETED');
+
         $this->info('================================');
 
         return Command::SUCCESS;
