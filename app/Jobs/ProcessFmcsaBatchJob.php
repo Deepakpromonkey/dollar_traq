@@ -39,7 +39,9 @@ class ProcessFmcsaBatchJob implements ShouldQueue
         $carriers = Carrier::whereIn(
             'id',
             $this->carrierIds
-        )->get();
+        )
+            ->select('id', 'dot_number')
+            ->cursor();
 
         Log::channel('fmcsa')->info(
             '======================================'
@@ -50,16 +52,23 @@ class ProcessFmcsaBatchJob implements ShouldQueue
         );
 
         Log::channel('fmcsa')->info(
-            'TOTAL CARRIERS: '.count($carriers)
-        );
-
-        Log::channel('fmcsa')->info(
             '======================================'
         );
 
-        foreach ($carriers as $index => $carrier) {
+        foreach ($carriers as $carrier) {
 
             try {
+
+                DB::table('carrier_sync_states')->updateOrInsert(
+                    [
+                        'carrier_id' => $carrier->id,
+                    ],
+                    [
+                        'is_syncing' => true,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
 
                 echo PHP_EOL;
 
@@ -97,23 +106,30 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                         'STATUS => '.$response->status()
                     );
 
+                    DB::table('carrier_sync_states')
+                        ->where('carrier_id', $carrier->id)
+                        ->update([
+                            'is_syncing' => false,
+                            'updated_at' => now(),
+                        ]);
+
                     continue;
                 }
 
                 $json = $response->json();
-
-                Log::channel('fmcsa')->info(
-                    json_encode(
-                        $json,
-                        JSON_PRETTY_PRINT
-                    )
-                );
 
                 if (! isset($json['content']['carrier'])) {
 
                     Log::channel('fmcsa')->error(
                         "INVALID RESPONSE => {$carrier->dot_number}"
                     );
+
+                    DB::table('carrier_sync_states')
+                        ->where('carrier_id', $carrier->id)
+                        ->update([
+                            'is_syncing' => false,
+                            'updated_at' => now(),
+                        ]);
 
                     continue;
                 }
@@ -133,10 +149,16 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                     'updated_at' => now(),
                 ]);
 
-                $oldValues = $carrier->toArray();
+                $existingCarrier = DB::table('carriers')
+                    ->where('id', $carrier->id)
+                    ->first();
+
+                $oldValues = (array) $existingCarrier;
 
                 $updateData = [
+
                     'ein' => $apiCarrier['ein'] ?? null,
+
                     'legal_name' => $apiCarrier['legalName'] ?? null,
 
                     'dba_name' => $apiCarrier['dbaName'] ?? null,
@@ -310,19 +332,15 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 }
 
                 DB::table('carrier_sync_states')->updateOrInsert(
-
                     [
                         'carrier_id' => $carrier->id,
                     ],
-
                     [
                         'last_synced_at' => now(),
 
                         'last_success_at' => now(),
 
                         'next_sync_at' => now()->addDays(30),
-
-                        'sync_attempts' => DB::raw('sync_attempts + 1'),
 
                         'is_syncing' => false,
 
@@ -331,6 +349,10 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                         'created_at' => now(),
                     ]
                 );
+
+                DB::table('carrier_sync_states')
+                    ->where('carrier_id', $carrier->id)
+                    ->increment('sync_attempts');
 
                 DB::table('carrier_sync_logs')->insert([
 
@@ -358,6 +380,13 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 );
 
             } catch (\Throwable $e) {
+
+                DB::table('carrier_sync_states')
+                    ->where('carrier_id', $carrier->id)
+                    ->update([
+                        'is_syncing' => false,
+                        'updated_at' => now(),
+                    ]);
 
                 Log::channel('fmcsa')->error(
                     "SYNC FAILED => DOT {$carrier->dot_number}"
