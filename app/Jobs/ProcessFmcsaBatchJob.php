@@ -136,7 +136,7 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 $oldValues = $carrier->toArray();
 
                 $updateData = [
-
+                    'ein' => $apiCarrier['ein'] ?? null,
                     'legal_name' => $apiCarrier['legalName'] ?? null,
 
                     'dba_name' => $apiCarrier['dbaName'] ?? null,

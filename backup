@@ -1,0 +1,7 @@
+php artisan queue:work --queue=default --tries=3 --timeout=0 &
+php artisan fmcsa:sync
+
+
+
+scp ~/Downloads/donald_traq.sql Deepak@138.197.83.169:/home/1624253.cloudwaysapps.com/vnurwashnd/
+* * * * * cd /home/master/applications/YOUR_APP/public_html && php artisan queue:work --queue=default --tries=3 --timeout=0 --stop-when-empty >> /dev/null 2>&1
