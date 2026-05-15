@@ -1,0 +1,96 @@
+php artisan queue:work --queue=default --tries=3 --timeout=0 &
+php artisan fmcsa:sync
+
+
+
+scp ~/Downloads/donald_traq.sql Deepak@138.197.83.169:/home/1624253.cloudwaysapps.com/vnurwashnd/
+* * * * * cd /home/master/applications/YOUR_APP/public_html && php artisan queue:work --queue=default --tries=3 --timeout=0 --stop-when-empty >> /dev/null 2>&1
+
+
+{
+    "content": {
+        "_links": {
+            "basics": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694/basics"
+            },
+            "cargo carried": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694/cargo-carried"
+            },
+            "operation classification": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694/operation-classification"
+            },
+            "docket numbers": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694/docket-numbers"
+            },
+            "carrier active-For-hire authority": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694/authority"
+            },
+            "self": {
+                "href": "https://mobile.fmcsa.dot.gov/qc/services/carriers/104694"
+            }
+        },
+        "carrier": {
+            "allowedToOperate": "Y",
+            "bipdInsuranceOnFile": "0",
+            "bipdInsuranceRequired": "Y",
+            "bipdRequiredAmount": "1000",
+            "bondInsuranceOnFile": "0",
+            "bondInsuranceRequired": "Y",
+            "brokerAuthorityStatus": "A",
+            "cargoInsuranceOnFile": "0",
+            "cargoInsuranceRequired": "u",
+            "carrierOperation": {
+                "carrierOperationCode": "A",
+                "carrierOperationDesc": "Interstate"
+            },
+            "censusTypeId": {
+                "censusType": "C",
+                "censusTypeDesc": "CARRIER",
+                "censusTypeId": 1
+            },
+            "commonAuthorityStatus": "I",
+            "contractAuthorityStatus": "I",
+            "crashTotal": 4,
+            "dbaName": "BULLDOG HIWAY EXPRESS",
+            "dotNumber": 104694,
+            "driverInsp": 26,
+            "driverOosInsp": 0,
+            "driverOosRate": 0,
+            "driverOosRateNationalAverage": "5.51",
+            "ein": 570399611,
+            "fatalCrash": 0,
+            "hazmatInsp": 2,
+            "hazmatOosInsp": 0,
+            "hazmatOosRate": 0,
+            "hazmatOosRateNationalAverage": "4.5",
+            "injCrash": 1,
+            "isPassengerCarrier": "N",
+            "issScore": null,
+            "legalName": "BULLDOG HIWAY EXPRESS LLC",
+            "mcs150Outdated": "N",
+            "oosDate": null,
+            "oosRateNationalAverageYear": "2009-2010",
+            "phyCity": "NORTH CHARLESTON",
+            "phyCountry": "US",
+            "phyState": "SC",
+            "phyStreet": "3390 BUFFALO AVE",
+            "phyZipcode": "29418",
+            "reviewDate": "2004-02-23",
+            "reviewType": "C",
+            "safetyRating": "S",
+            "safetyRatingDate": "2004-03-04",
+            "safetyReviewDate": "2004-02-23",
+            "safetyReviewType": "C",
+            "snapshotDate": null,
+            "statusCode": "A",
+            "totalDrivers": 109,
+            "totalPowerUnits": 128,
+            "towawayCrash": 3,
+            "vehicleInsp": 9,
+            "vehicleOosInsp": 4,
+            "vehicleOosRate": 44.44444444444444444444444444444444444444,
+            "vehicleOosRateNationalAverage": "20.72"
+        }
+    },
+    "retrievalDate": "2026-05-14T12:58:27.701+0000"
+}

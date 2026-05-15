@@ -31,8 +31,6 @@ return new class extends Migration
             $table->string('physical_telephone_number_authority')->nullable();
             $table->string('mailing_telephone_number_authority')->nullable();
 
-
-                    
             $table->string('email_address', 255)->nullable();
             $table->string('email_domain', 255)->nullable();
             $table->string('entity_type_desc')->nullable();
@@ -100,7 +98,7 @@ return new class extends Migration
             $table->boolean('out_of_service_flag')->nullable();
             $table->boolean('hazardous_material')->nullable();
 
-           $table->string('physical_address_id')->nullable();
+            $table->string('physical_address_id')->nullable();
             $table->string('mailing_address_id')->nullable();
             $table->string('physical_address_authority_id')->nullable();
             $table->string('mailing_address_authority_id')->nullable();
@@ -313,9 +311,9 @@ return new class extends Migration
             $table->bigInteger('insurance_cancel_count')->nullable();
             $table->string('insurance_last_canceled', 50)->nullable();
             $table->bigInteger('insurance_bipd_on_file')->nullable();
-          
+
             $table->bigInteger('insurance_bond_on_file')->nullable();
-          
+
             $table->string('insurance_cargo_on_file')->nullable();
             $table->bigInteger('insurance_bipd_required')->nullable();
             $table->bigInteger('insurance_bond_required')->nullable();
@@ -519,11 +517,11 @@ return new class extends Migration
 
         Schema::create('carrier_address_ids', function (Blueprint $table) {
             $table->id();
-             $table->unsignedBigInteger('carrier_id');
+            $table->unsignedBigInteger('carrier_id');
             $table->foreign('carrier_id')
-    ->references('id')
-    ->on('carriers')
-    ->onDelete('cascade');
+                ->references('id')
+                ->on('carriers')
+                ->onDelete('cascade');
             $table->string('row_id', 50)->nullable();
             $table->unsignedBigInteger('contact_change_id')->nullable();
             $table->string('address_key', 100)->nullable();
@@ -536,13 +534,13 @@ return new class extends Migration
         });
         Schema::create('carrier_authority_histories', function (Blueprint $table) {
             $table->id();
-          
-      $table->string('row_id', 50)->nullable();
+
+            $table->string('row_id', 50)->nullable();
             $table->unsignedBigInteger('carrier_id');
-  $table->foreign('carrier_id')
-    ->references('id')
-    ->on('carriers')
-    ->onDelete('cascade');
+            $table->foreign('carrier_id')
+                ->references('id')
+                ->on('carriers')
+                ->onDelete('cascade');
             $table->string('authority_type_desc')->nullable();
             $table->string('original_action_desc')->nullable();
             $table->date('original_served_date')->nullable();
@@ -554,8 +552,8 @@ return new class extends Migration
         });
         Schema::create('carrier_geo_points', function (Blueprint $table) {
             $table->id();
-              $table->string('row_id', 50)->nullable();
-           
+            $table->string('row_id', 50)->nullable();
+
             $table->unsignedBigInteger('carrier_id');
             $table->foreign('carrier_id')
                 ->references('id')
@@ -567,8 +565,8 @@ return new class extends Migration
         });
         Schema::create('carrier_risk_factors', function (Blueprint $table) {
             $table->id();
-              $table->string('row_id', 50)->nullable();
-          
+            $table->string('row_id', 50)->nullable();
+
             $table->unsignedBigInteger('carrier_id');
             $table->foreign('carrier_id')
                 ->references('id')
@@ -637,13 +635,13 @@ return new class extends Migration
         });
         Schema::create('carrier_load_summaries', function (Blueprint $table) {
             $table->id();
-              $table->string('row_id', 50)->nullable();
-          
+            $table->string('row_id', 50)->nullable();
+
             $table->unsignedBigInteger('carrier_id');
-  $table->foreign('carrier_id')
-    ->references('id')
-    ->on('carriers')
-    ->onDelete('cascade');
+            $table->foreign('carrier_id')
+                ->references('id')
+                ->on('carriers')
+                ->onDelete('cascade');
             $table->string('load_key')->nullable();
             $table->string('load_value')->nullable();
 
@@ -654,8 +652,8 @@ return new class extends Migration
         });
         Schema::create('carrier_preferred_lanes', function (Blueprint $table) {
             $table->id();
-              $table->string('row_id', 50)->nullable();
-           
+            $table->string('row_id', 50)->nullable();
+
             $table->unsignedBigInteger('carrier_id');
             $table->foreign('carrier_id')
                 ->references('id')
@@ -667,39 +665,39 @@ return new class extends Migration
             $table->timestamps();
         });
         Schema::create('carrier_network_graphs', function (Blueprint $table) {
-    $table->id();
+            $table->id();
 
-    $table->unsignedBigInteger('carrier_id');
+            $table->unsignedBigInteger('carrier_id');
 
-    $table->string('graph_type')->nullable();
-    $table->json('graph_data')->nullable();
+            $table->string('graph_type')->nullable();
+            $table->json('graph_data')->nullable();
 
-    $table->timestamps();
+            $table->timestamps();
 
-    $table->foreign('carrier_id')
-        ->references('id')
-        ->on('carriers')
-        ->onDelete('cascade');
-});
-Schema::create('carrier_equipment_summaries', function (Blueprint $table) {
-    $table->id();
+            $table->foreign('carrier_id')
+                ->references('id')
+                ->on('carriers')
+                ->onDelete('cascade');
+        });
+        Schema::create('carrier_equipment_summaries', function (Blueprint $table) {
+            $table->id();
 
-    $table->unsignedBigInteger('carrier_id');
+            $table->unsignedBigInteger('carrier_id');
 
-    $table->string('summary_type')->nullable();
-    $table->string('equipment_type')->nullable();
+            $table->string('summary_type')->nullable();
+            $table->string('equipment_type')->nullable();
 
-    $table->string('category')->nullable();
+            $table->string('category')->nullable();
 
-    $table->integer('count')->nullable();
+            $table->integer('count')->nullable();
 
-    $table->timestamps();
+            $table->timestamps();
 
-    $table->foreign('carrier_id')
-        ->references('id')
-        ->on('carriers')
-        ->onDelete('cascade');
-});
+            $table->foreign('carrier_id')
+                ->references('id')
+                ->on('carriers')
+                ->onDelete('cascade');
+        });
     }
 
     public function down(): void

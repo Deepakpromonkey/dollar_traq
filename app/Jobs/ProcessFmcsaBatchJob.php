@@ -74,11 +74,9 @@ class ProcessFmcsaBatchJob implements ShouldQueue
 
                 echo '===================================='.PHP_EOL;
 
-                echo 'PROCESSING DOT: '.
-                    $carrier->dot_number.PHP_EOL;
+                echo 'PROCESSING DOT: '.$carrier->dot_number.PHP_EOL;
 
-                echo 'TIME: '.
-                    now().PHP_EOL;
+                echo 'TIME: '.now().PHP_EOL;
 
                 echo '===================================='.PHP_EOL;
 
@@ -95,6 +93,7 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 $response = Http::timeout(60)
                     ->acceptJson()
                     ->get($url);
+
                 Log::channel('fmcsa')->info(
                     "API RESPONSE => {$response}"
                 );
@@ -158,11 +157,19 @@ class ProcessFmcsaBatchJob implements ShouldQueue
 
                 $oldValues = (array) $existingCarrier;
 
+                /*
+                |--------------------------------------------------------------------------
+                | carriers
+                |--------------------------------------------------------------------------
+                */
+
                 $updateData = [
 
                     'ein' => $apiCarrier['ein'] ?? null,
 
                     'legal_name' => $apiCarrier['legalName'] ?? null,
+
+                    'dot_number' => $apiCarrier['dotNumber'] ?? null,
 
                     'dba_name' => $apiCarrier['dbaName'] ?? null,
 
@@ -170,25 +177,47 @@ class ProcessFmcsaBatchJob implements ShouldQueue
 
                     'status_code' => $apiCarrier['statusCode'] ?? null,
 
-                    'usdot_status' => $apiCarrier['statusCode'] ?? null,
-
                     'mcs150_outdated' => ($apiCarrier['mcs150Outdated'] ?? 'N') === 'Y',
 
                     'passenger_carrier' => ($apiCarrier['isPassengerCarrier'] ?? 'N') === 'Y',
 
-                    'broker_authority_status' => $apiCarrier['brokerAuthorityStatus'] ?? null,
+                    'authority_broker' => $apiCarrier['brokerAuthorityStatus'] ?? null,
 
-                    'common_authority_status' => $apiCarrier['commonAuthorityStatus'] ?? null,
+                    'authority_common' => $apiCarrier['commonAuthorityStatus'] ?? null,
 
-                    'contract_authority_status' => $apiCarrier['contractAuthorityStatus'] ?? null,
+                    'authority_contract' => $apiCarrier['contractAuthorityStatus'] ?? null,
 
-                    'review_type' => $apiCarrier['reviewType'] ?? null,
+                    'latest_review_type_desce' => $apiCarrier['reviewType'] ?? null,
 
                     'safety_review_type' => $apiCarrier['safetyReviewType'] ?? null,
 
                     'total_drivers' => $apiCarrier['totalDrivers'] ?? null,
 
                     'phy_country' => $apiCarrier['phyCountry'] ?? null,
+
+                    'phy_city' => $apiCarrier['phyCity'] ?? null,
+
+                    'phy_state' => $apiCarrier['phyState'] ?? null,
+
+                    'phy_street' => $apiCarrier['phyStreet'] ?? null,
+
+                    'phy_zipcode' => $apiCarrier['phyZipcode'] ?? null,
+
+                    'latest_review_date' => $this->date(
+                        $apiCarrier['reviewDate'] ?? null
+                    ),
+
+                    'safety_rating' => $apiCarrier['safetyRating'] ?? null,
+
+                    'safety_review_date' => $this->date(
+                        $apiCarrier['safetyReviewDate'] ?? null
+                    ),
+
+                    'driver_oos_rate' => $apiCarrier['driverOosRate'] ?? null,
+
+                    'hazmat_oos_rate' => $apiCarrier['hazmatOosRate'] ?? null,
+
+                    'vehicle_oos_rate' => $apiCarrier['vehicleOosRate'] ?? null,
 
                     'oos_rate_national_average_year' => $apiCarrier['oosRateNationalAverageYear'] ?? null,
 
@@ -204,12 +233,22 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                         $apiCarrier['snapshotDate'] ?? null
                     ),
 
+                    'iss_value' => $this->date(
+                        $apiCarrier['issScore'] ?? null
+                    ),
+
                     'updated_at' => now(),
                 ];
 
                 DB::table('carriers')
                     ->where('id', $carrier->id)
                     ->update($updateData);
+
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_crashes
+                |--------------------------------------------------------------------------
+                */
 
                 DB::table('carrier_crashes')->updateOrInsert(
 
@@ -231,6 +270,56 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                         'created_at' => now(),
                     ]
                 );
+
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_operations
+                |--------------------------------------------------------------------------
+                */
+
+                DB::table('carrier_operations')->updateOrInsert(
+                    [
+                        'carrier_id' => $carrier->id,
+                    ],
+                    [
+                        'carrier_operation_code' => $apiCarrier['carrierOperation']['carrierOperationCode'] ?? null,
+
+                        'carrier_operation_desc' => $apiCarrier['carrierOperation']['carrierOperationDesc'] ?? null,
+
+                        'updated_at' => now(),
+
+                        'created_at' => now(),
+                    ]
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_census_types
+                |--------------------------------------------------------------------------
+                */
+
+                DB::table('carrier_census_types')->updateOrInsert(
+                    [
+                        'carrier_id' => $carrier->id,
+                    ],
+                    [
+                        'census_type' => $apiCarrier['censusTypeId']['censusType'] ?? null,
+
+                        'census_type_desc' => $apiCarrier['censusTypeId']['censusTypeDesc'] ?? null,
+
+                        'census_type_id' => $apiCarrier['censusTypeId']['censusTypeId'] ?? null,
+
+                        'updated_at' => now(),
+
+                        'created_at' => now(),
+                    ]
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_inspections
+                |--------------------------------------------------------------------------
+                */
 
                 DB::table('carrier_inspections')->updateOrInsert(
 
@@ -257,11 +346,19 @@ class ProcessFmcsaBatchJob implements ShouldQueue
 
                         'natl_avg_oos_hazmat' => $apiCarrier['hazmatOosRateNationalAverage'] ?? null,
 
+                        'driverOosRate' => $apiCarrier['driverOosRate'] ?? null,
+
                         'updated_at' => now(),
 
                         'created_at' => now(),
                     ]
                 );
+
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_fleet_summaries
+                |--------------------------------------------------------------------------
+                */
 
                 DB::table('carrier_fleet_summaries')->updateOrInsert(
 
@@ -278,6 +375,12 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                     ]
                 );
 
+                /*
+                |--------------------------------------------------------------------------
+                | carrier_insurances
+                |--------------------------------------------------------------------------
+                */
+
                 DB::table('carrier_insurances')->updateOrInsert(
 
                     [
@@ -287,17 +390,29 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                     [
                         'insurance_bipd_on_file' => $apiCarrier['bipdInsuranceOnFile'] ?? null,
 
+                        'insurance_bipd_required' => $apiCarrier['bipdInsuranceRequired'] ?? null,
+
+                        'insurance_cargo_required' => $apiCarrier['cargoInsuranceRequired'] ?? null,
+
+                        'bipdRequiredAmount' => $apiCarrier['bipdRequiredAmount'] ?? null,
+
                         'insurance_bond_on_file' => $apiCarrier['bondInsuranceOnFile'] ?? null,
 
-                        'insurance_cargo_on_file' => $apiCarrier['cargoInsuranceOnFile'] ?? null,
+                        'insurance_bond_required' => $apiCarrier['bondInsuranceRequired'] ?? null,
 
-                        'insurance_bipd_required' => $apiCarrier['bipdRequiredAmount'] ?? null,
+                        'insurance_cargo_on_file' => $apiCarrier['cargoInsuranceOnFile'] ?? null,
 
                         'updated_at' => now(),
 
                         'created_at' => now(),
                     ]
                 );
+
+                /*
+                |--------------------------------------------------------------------------
+                | change logs
+                |--------------------------------------------------------------------------
+                */
 
                 $totalChanges = 0;
 
@@ -334,6 +449,12 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                     }
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | sync states
+                |--------------------------------------------------------------------------
+                */
+
                 DB::table('carrier_sync_states')->updateOrInsert(
                     [
                         'carrier_id' => $carrier->id,
@@ -356,6 +477,12 @@ class ProcessFmcsaBatchJob implements ShouldQueue
                 DB::table('carrier_sync_states')
                     ->where('carrier_id', $carrier->id)
                     ->increment('sync_attempts');
+
+                /*
+                |--------------------------------------------------------------------------
+                | sync logs
+                |--------------------------------------------------------------------------
+                */
 
                 DB::table('carrier_sync_logs')->insert([
 
