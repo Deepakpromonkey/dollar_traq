@@ -57,7 +57,7 @@ class DispatchFmcsaSync extends Command
 
             ->orderBy('carriers.id')
 
-            ->chunk(500, function ($carriers) use (&$total) {
+            ->chunk(1000, function ($carriers) use (&$total) {
 
                 $ids = $carriers
                     ->pluck('id')

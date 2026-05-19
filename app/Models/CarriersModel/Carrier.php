@@ -50,7 +50,6 @@ class Carrier extends BaseModel
 
         foreach ($row->toArray() as $key => $value) {
 
-            // format dates
             if (
                 str_contains($key, 'date') ||
                 str_contains($key, 'created_at') ||
@@ -58,13 +57,11 @@ class Carrier extends BaseModel
                 str_contains($key, 'canceled') ||
                 str_contains($key, 'changed')
             ) {
-
                 if (! empty($value) && strtotime($value)) {
-
                     $row->$key = date('d-m-Y', strtotime($value));
                 }
             }
-            // format names/text
+
             if (
                 str_contains($key, 'legal_name') ||
                 str_contains($key, 'city') ||
@@ -73,23 +70,18 @@ class Carrier extends BaseModel
                 str_contains($key, 'type') ||
                 str_contains($key, 'desc')
             ) {
-
                 if (! empty($value) && is_string($value)) {
-
                     $row->$key = ucwords($value);
                 }
             }
 
-            // format float values
             if (
                 str_contains($key, 'amount') ||
                 str_contains($key, 'price') ||
                 str_contains($key, 'cost') ||
                 str_contains($key, 'limit')
             ) {
-
                 if (is_numeric($value)) {
-
                     $row->$key = number_format((float) $value, 2, '.', '');
                 }
             }
@@ -101,38 +93,8 @@ class Carrier extends BaseModel
     private static function applySearchFilters($query, $request, $searchableFields)
     {
         foreach ($searchableFields as $field) {
-
             if ($request->filled($field)) {
-
-                $value = trim($request->{$field});
-
-                if (in_array($field, [
-                    'dot_number',
-                    'docket_number',
-                    'telephone_number',
-                    'ein',
-                    'duns',
-                ])) {
-
-                    $query->where($field, $value);
-
-                } elseif ($field === 'email_address') {
-
-                    $query->where($field, 'LIKE', '%'.$value.'%');
-
-                } elseif (in_array($field, [
-                    'legal_name',
-                    'dba_name',
-                    'company_contact_primary',
-                    'company_contact_secondary',
-                ])) {
-
-                    $query->where($field, 'LIKE', '%'.$value.'%');
-
-                } else {
-
-                    $query->where($field, 'LIKE', '%'.$value.'%');
-                }
+                $query->where($field, trim($request->{$field}));
             }
         }
 
@@ -141,17 +103,11 @@ class Carrier extends BaseModel
 
     public static function search(Request $request)
     {
-        $cacheKey = 'carrier_search_'.md5(json_encode([
-            'dot_number' => $request->dot_number,
-            'docket_number' => $request->docket_number,
-            'telephone_number' => $request->telephone_number,
-            'email_address' => $request->email_address,
-            'vin' => $request->vin,
-            'physical_address' => $request->physical_address,
-            'page' => $request->page ?? 1,
-        ]));
+        $searchValue = trim($request->query('query', ''));
 
-        return Cache::rememberForever($cacheKey, function () use ($request) {
+        $cacheKey = 'carrier_search_'.md5($searchValue.'_'.$request->query('per_page', 10).'_'.$request->query('page', 1));
+
+        return Cache::rememberForever($cacheKey, function () use ($request, $searchValue) {
 
             $query = self::query();
 
@@ -171,53 +127,42 @@ class Carrier extends BaseModel
                 'email_domain',
             ];
 
-            self::applySearchFilters($query, $request, $searchableFields);
+            if (! empty($searchValue)) {
+                $query->where(function ($q) use ($searchableFields, $searchValue) {
+                    foreach ($searchableFields as $field) {
+                        $q->orWhere($field, $searchValue);
+                    }
 
-            if ($request->filled('physical_address')) {
+                    // physical_address via relation
+                    $q->orWhereHas('contactHistories', function ($q2) use ($searchValue) {
+                        $q2->where('physical_address', $searchValue);
+                    });
 
-                $query->whereHas('contactHistories', function ($q) use ($request) {
-
-                    $q->where(
-                        'physical_address',
-                        'LIKE',
-                        '%'.trim($request->physical_address).'%'
-                    );
-                });
-            }
-
-            if ($request->filled('vin')) {
-
-                $query->whereHas('fleetSummaries.equipmentHistories', function ($q) use ($request) {
-
-                    $q->where('vin', trim($request->vin));
+                    // vin via relation
+                    $q->orWhereHas('fleetSummaries.equipmentHistories', function ($q2) use ($searchValue) {
+                        $q2->where('vin', $searchValue);
+                    });
                 });
             }
 
             if (! $query->exists()) {
-
                 self::fetchAndStore($request);
 
                 $query = self::query();
 
-                self::applySearchFilters($query, $request, $searchableFields);
+                if (! empty($searchValue)) {
+                    $query->where(function ($q) use ($searchableFields, $searchValue) {
+                        foreach ($searchableFields as $field) {
+                            $q->orWhere($field, $searchValue);
+                        }
 
-                if ($request->filled('physical_address')) {
+                        $q->orWhereHas('contactHistories', function ($q2) use ($searchValue) {
+                            $q2->where('physical_address', $searchValue);
+                        });
 
-                    $query->whereHas('contactHistories', function ($q) use ($request) {
-
-                        $q->where(
-                            'physical_address',
-                            'LIKE',
-                            '%'.trim($request->physical_address).'%'
-                        );
-                    });
-                }
-
-                if ($request->filled('vin')) {
-
-                    $query->whereHas('fleetSummaries.equipmentHistories', function ($q) use ($request) {
-
-                        $q->where('vin', trim($request->vin));
+                        $q->orWhereHas('fleetSummaries.equipmentHistories', function ($q2) use ($searchValue) {
+                            $q2->where('vin', $searchValue);
+                        });
                     });
                 }
             }
@@ -244,17 +189,15 @@ class Carrier extends BaseModel
                     'fleetSummaries:id,carrier_id,total_power_units',
                     'contactHistories:id,carrier_id,physical_address',
                 ])
-                ->paginate($request->per_page ?? 10);
+                ->paginate($request->query('per_page', 10));
 
             $data->getCollection()->transform(function ($row) {
-
                 return [
-
                     'id' => $row->id,
                     'carrier_type' => $row->entity_type_desc,
                     'company_name' => $row->legal_name,
                     'mileage' => $row->mcs150_mileage,
-                    'usdto_status' => $row->usdot_status,
+                    'usdot_status' => $row->usdot_status,
                     'mc_number' => $row->docket_number,
                     'dot_number' => $row->dot_number,
                     'ein' => $row->ein,
@@ -298,9 +241,7 @@ class Carrier extends BaseModel
                 'docket' => $data['docket'] ?? null,
                 'docket_number' => $data['docket_number'] ?? null,
                 'docket_prefix' => $data['docket_prefix'] ?? null,
-                'legal_name' => ! empty($data['legal_name'])
-                ? ucwords($data['legal_name'])
-                : null,
+                'legal_name' => ! empty($data['legal_name']) ? ucwords($data['legal_name']) : null,
                 'dba_name' => $data['dba_name'] ?? null,
                 'dba_flag' => $data['dba_flag'] ?? false,
                 'duns' => $data['duns'] ?? null,
@@ -408,7 +349,6 @@ class Carrier extends BaseModel
                 'mailing_address_authority_state' => $data['undeliverable_mailing_address'] ?? false,
                 'mailing_address_authority_street' => $data['undeliverable_mailing_address'] ?? false,
                 'mailing_address_authority_zip_code' => $data['undeliverable_mailing_address'] ?? false,
-
             ]
         );
 
@@ -494,20 +434,18 @@ class Carrier extends BaseModel
                     'last_inspection_date_vin_dot' => $equipment['last_inspection_date_vin'] ?? null,
                     'last_inspected_under_dot' => $equipment['last_inspected_under_dot'] ?? null,
                     'most_recent_inspection_flag' => $equipment['most_recent_inspection_flag'] ?? null,
-
                 ]);
             }
         }
 
         $insurance = CarrierInsurance::updateOrCreate(
-
             ['carrier_id' => $carrier->id],
             [
                 'row_id' => uniqid(),
                 'insurance_cancel_count' => $data['insurance_cancel_count'] ?? null,
                 'insurance_last_canceled' => ! empty($data['insurance_last_canceled'])
-                ? date('d-m-Y', strtotime($data['insurance_last_canceled']))
-                : null,
+                    ? date('d-m-Y', strtotime($data['insurance_last_canceled']))
+                    : null,
                 'insurance_bipd_on_file' => $data['insurance_bipd_on_file'] ?? null,
                 'insurance_bipd_required' => $data['insurance_bipd_required'] ?? false,
                 'insurance_bond_on_file' => $data['insurance_bond_on_file'] ?? null,
@@ -516,6 +454,7 @@ class Carrier extends BaseModel
                 'insurance_cargo_required' => $data['insurance_cargo_required'] ?? false,
             ]
         );
+
         if (isset($data['insurance_history']) && is_array($data['insurance_history'])) {
             foreach ($data['insurance_history'] as $insuranceItem) {
                 CarrierInsuranceHistory::create([
