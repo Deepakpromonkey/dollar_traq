@@ -5,7 +5,6 @@ namespace App\Models\CarriersModel;
 use App\Modules\Base\Models\BaseModel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class Carrier extends BaseModel
 {
@@ -105,119 +104,113 @@ class Carrier extends BaseModel
     {
         $searchValue = trim($request->query('query', ''));
 
-        $cacheKey = 'carrier_search_'.md5($searchValue.'_'.$request->query('per_page', 10).'_'.$request->query('page', 1));
+        $sortParam = $request->query('sort', '');
+        $sortDir = match ($sortParam) {
+            'sortByNameAsc' => 'asc',
+            'sortByNameDesc' => 'desc',
+            default => 'asc',
+        };
 
-        return Cache::rememberForever($cacheKey, function () use ($request, $searchValue) {
+        $query = self::query();
 
+        $searchableFields = [
+            'docket_number',
+            'dot_number',
+            'legal_name',
+            'telephone_number',
+            'email_address',
+            'ein',
+            'docket',
+            'duns',
+        ];
+
+        $applySearch = function ($q) use ($searchableFields, $searchValue) {
+            $q->where(function ($inner) use ($searchableFields, $searchValue) {
+
+                $searchValue = trim($searchValue);
+                $isNumeric = is_numeric($searchValue);
+
+                foreach ($searchableFields as $field) {
+
+                    if ($isNumeric) {
+                        $inner->orWhere($field, $searchValue);
+                    } else {
+                        $inner->orWhereRaw(
+                            "LOWER($field) LIKE ?",
+                            ['%'.strtolower($searchValue).'%']
+                        );
+                    }
+                }
+            });
+        };
+
+        if (! empty($searchValue)) {
+            $applySearch($query);
+        }
+
+        if (! $query->exists()) {
+            self::fetchAndStore($request);
             $query = self::query();
 
-            $searchableFields = [
-                'docket_number',
+            if (! empty($searchValue)) {
+                $applySearch($query);
+            }
+        }
+
+        $data = $query
+            ->select([
+                'id',
+                'row_id',
                 'dot_number',
+                'entity_type_desc',
+                'docket_number',
+                'docket',
+                'ein',
+                'duns',
                 'legal_name',
                 'telephone_number',
                 'email_address',
-                'ein',
-                'docket',
-                'duns',
-                'dba_name',
-                'company_contact_primary',
-                'company_contact_secondary',
-                'fax_number',
-                'email_domain',
-            ];
+                'mcs150_mileage',
+                'risk_score',
+                'authority_contract',
+                'authority_broker',
+                'indicator_insurance',
+                'usdot_status',
+            ])
+            ->with([
+                'fleetSummaries:id,carrier_id,total_power_units',
+                'contactHistories:id,carrier_id,physical_address',
+            ])
+            ->orderBy('legal_name', $sortDir)
+            ->paginate($request->query('per_page', 10));
 
-            if (! empty($searchValue)) {
-                $query->where(function ($q) use ($searchableFields, $searchValue) {
-                    foreach ($searchableFields as $field) {
-                        $q->orWhere($field, $searchValue);
-                    }
-
-                    // physical_address via relation
-                    $q->orWhereHas('contactHistories', function ($q2) use ($searchValue) {
-                        $q2->where('physical_address', $searchValue);
-                    });
-
-                    // vin via relation
-                    $q->orWhereHas('fleetSummaries.equipmentHistories', function ($q2) use ($searchValue) {
-                        $q2->where('vin', $searchValue);
-                    });
-                });
-            }
-
-            if (! $query->exists()) {
-                self::fetchAndStore($request);
-
-                $query = self::query();
-
-                if (! empty($searchValue)) {
-                    $query->where(function ($q) use ($searchableFields, $searchValue) {
-                        foreach ($searchableFields as $field) {
-                            $q->orWhere($field, $searchValue);
-                        }
-
-                        $q->orWhereHas('contactHistories', function ($q2) use ($searchValue) {
-                            $q2->where('physical_address', $searchValue);
-                        });
-
-                        $q->orWhereHas('fleetSummaries.equipmentHistories', function ($q2) use ($searchValue) {
-                            $q2->where('vin', $searchValue);
-                        });
-                    });
-                }
-            }
-
-            $data = $query
-                ->select([
-                    'id',
-                    'dot_number',
-                    'docket_number',
-                    'docket',
-                    'ein',
-                    'duns',
-                    'legal_name',
-                    'telephone_number',
-                    'email_address',
-                    'mcs150_mileage',
-                    'risk_score',
-                    'authority_contract',
-                    'authority_broker',
-                    'indicator_insurance',
-                    'usdot_status',
-                ])
-                ->with([
-                    'fleetSummaries:id,carrier_id,total_power_units',
-                    'contactHistories:id,carrier_id,physical_address',
-                ])
-                ->paginate($request->query('per_page', 10));
-
-            $data->getCollection()->transform(function ($row) {
-                return [
-                    'id' => $row->id,
-                    'carrier_type' => $row->entity_type_desc,
-                    'company_name' => $row->legal_name,
-                    'mileage' => $row->mcs150_mileage,
-                    'usdot_status' => $row->usdot_status,
-                    'mc_number' => $row->docket_number,
-                    'dot_number' => $row->dot_number,
-                    'ein' => $row->ein,
-                    'duns' => $row->duns,
-                    'phone' => $row->telephone_number,
-                    'email' => $row->email_address,
-                    'authority_verified' => $row->authority_contract === 'Active',
-                    'insurance_current' => (bool) $row->indicator_insurance,
-                    'risk_level' => $row->risk_score,
-                ];
-            });
-
+        $data->getCollection()->transform(function ($row) {
             return [
-                'total_results' => $data->total(),
-                'current_page' => $data->currentPage(),
-                'per_page' => $data->perPage(),
-                'last_page' => $data->lastPage(),
-                'data' => $data->items(),
+                'id' => $row->id,
+                'raw_id' => $row->row_id,
+                'carrier_type' => $row->entity_type_desc,
+                'company_name' => $row->legal_name,
+                'mileage' => $row->mcs150_mileage,
+                'usdot_status' => $row->usdot_status,
+                'mc_number' => $row->docket_number,
+                'dot_number' => $row->dot_number,
+                'ein' => $row->ein,
+                'duns' => $row->duns,
+                'phone' => $row->telephone_number,
+                'email' => $row->email_address,
+                'authority_verified' => $row->authority_contract === 'Active',
+                'insurance_current' => (bool) $row->indicator_insurance,
+                'risk_level' => $row->risk_score,
             ];
         });
+
+        return [
+            'total_results' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'per_page' => $data->perPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items(),
+        ];
     }
 
     public static function fetchAndStore(Request $request)
@@ -505,6 +498,87 @@ class Carrier extends BaseModel
         $inserted[] = $carrier;
 
         return collect($inserted);
+    }
+
+    public static function detail(Request $request)
+    {
+        $rowId = trim($request->query('row_id', ''));
+
+        if (empty($rowId)) {
+            return [
+                'success' => false,
+                'message' => 'row_id is required',
+            ];
+        }
+
+        $carrier = self::where('row_id', $rowId)
+            ->select([
+                'id',
+                'row_id',
+                'dot_number',
+                'docket_number',
+                'docket',
+                'docket_prefix',
+                'legal_name',
+                'dba_name',
+                'entity_type_desc',
+                'usdot_status',
+                'telephone_number',
+                'fax_number',
+                'email_address',
+                'email_domain',
+                'ein',
+                'duns',
+                'mcs150_mileage',
+                'mcs150_year',
+                'risk_score',
+                'authority_contract',
+                'authority_broker',
+                'indicator_insurance',
+                'indicator_authority',
+                'added_date',
+                'safety_rating_desc',
+                'safety_rating_date',
+            ])
+            ->first();
+
+        if (! $carrier) {
+            return [
+                'success' => false,
+                'message' => 'Carrier not found',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'id' => $carrier->id,
+                'row_id' => $carrier->row_id,
+                'dot_number' => $carrier->dot_number,
+                'mc_number' => $carrier->docket_number,
+                'docket' => $carrier->docket,
+                'docket_prefix' => $carrier->docket_prefix,
+                'company_name' => $carrier->legal_name,
+                'dba_name' => $carrier->dba_name,
+                'carrier_type' => $carrier->entity_type_desc,
+                'usdot_status' => $carrier->usdot_status,
+                'phone' => $carrier->telephone_number,
+                'fax' => $carrier->fax_number,
+                'email' => $carrier->email_address,
+                'email_domain' => $carrier->email_domain,
+                'ein' => $carrier->ein,
+                'duns' => $carrier->duns,
+                'mileage' => $carrier->mcs150_mileage,
+                'mcs150_year' => $carrier->mcs150_year,
+                'risk_level' => $carrier->risk_score,
+                'authority_verified' => $carrier->authority_contract === 'Active',
+                'insurance_current' => (bool) $carrier->indicator_insurance,
+                'authority_active' => (bool) $carrier->indicator_authority,
+                'safety_rating' => $carrier->safety_rating_desc,
+                'safety_rating_date' => $carrier->safety_rating_date,
+                'added_date' => $carrier->added_date,
+            ],
+        ];
     }
 
     public function basics(): HasMany

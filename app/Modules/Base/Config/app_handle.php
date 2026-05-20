@@ -1,7 +1,7 @@
 <?php
 
 return [
-    
+
     /*
     Backend
         Baseurl: http://127.0.0.1:3000/
@@ -14,6 +14,9 @@ return [
         'type' => 'custom',
         'model' => ['model' => 'App\Models\CarriersModel\Carrier', 'method' => 'search'],
     ],
-    
+    'backend/carrier/detail' => [
+        'type' => 'custom',
+        'model' => ['model' => 'App\Models\CarriersModel\Carrier', 'method' => 'detail'],
+    ],
 
 ];

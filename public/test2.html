@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FMCSA vs Carrier-OK | Data Gap Analysis Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+  :root {
+    --navy: #1B3A5C;
+    --blue: #2563EB;
+    --light-blue: #EFF6FF;
+    --green: #166534;
+    --green-bg: #DCFCE7;
+    --red: #991B1B;
+    --red-bg: #FEE2E2;
+    --yellow: #92400E;
+    --yellow-bg: #FEF3C7;
+    --orange: #9A3412;
+    --orange-bg: #FFEDD5;
+    --gray: #374151;
+    --light-gray: #F9FAFB;
+    --border: #E5E7EB;
+    --text: #111827;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--text);
+    background: #fff;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @media print {
+    body { font-size: 11px; }
+    .page-break { page-break-before: always; }
+  }
+
+  .wrapper { max-width: 960px; margin: 30px auto 40px; padding: 0 30px; }
+
+  /* ── COVER ── */
+  .cover {
+    background: linear-gradient(135deg, var(--navy) 0%, #2563EB 100%);
+    color: #fff; padding: 70px 80px; text-align:center;
+    border-radius: 4px; margin-bottom: 40px;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .cover h1 {
+    font-family: 'Merriweather', serif; font-size: 34px; font-weight: 700;
+    line-height: 1.2; margin-bottom: 10px;
+  }
+  .cover h2 { font-size: 15px; font-weight: 300; opacity: 0.85; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+    margin-top: 28px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; opacity: 0.9; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 48px; }
+  .section-title {
+    font-family: 'Merriweather', serif; font-size: 20px; font-weight: 700;
+    color: var(--navy); border-bottom: 3px solid var(--blue);
+    padding-bottom: 8px; margin-bottom: 20px;
+  }
+  .sub-title {
+    font-size: 15px; font-weight: 700; color: #1E40AF;
+    margin: 24px 0 10px;
+  }
+  p.body-text { margin-bottom: 14px; color: var(--gray); line-height: 1.7; }
+  .highlight-box {
+    background: var(--light-blue); border-left: 4px solid var(--blue);
+    padding: 14px 18px; border-radius: 0 6px 6px 0; margin: 16px 0;
+    font-weight: 600; color: var(--navy);
+  }
+  .na-notice {
+    background: #FFF7ED; border-left: 4px solid #F97316;
+    padding: 10px 16px; border-radius: 0 6px 6px 0; margin: 12px 0 16px;
+    font-size: 12px; color: #92400E; font-weight: 600;
+  }
+
+  /* ── BULLET LIST ── */
+  ul.report-list { list-style: none; padding: 0; margin: 8px 0 16px 0; }
+  ul.report-list li {
+    padding: 5px 0 5px 22px; position: relative; color: var(--gray);
+  }
+  ul.report-list li::before {
+    content: '▸'; position: absolute; left: 0;
+    color: var(--blue); font-size: 12px; top: 7px;
+  }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: var(--navy); color: #fff; padding: 10px 14px;
+    text-align: left; font-weight: 600; font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  th:not(:first-child) { text-align: center; }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td:not(:first-child) { text-align: center; }
+  tr:nth-child(even) td { background: var(--light-gray); }
+  tr:hover td { background: #EFF6FF; }
+  tr.na-row td { background: #FFF7ED !important; }
+  tr.na-row:hover td { background: #FFEDD5 !important; }
+  tr.na-row td:first-child { color: var(--orange); font-weight: 600; }
+
+  .badge {
+    display: inline-block; border-radius: 4px; padding: 3px 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .badge.yes  { background: var(--green-bg);  color: var(--green); }
+  .badge.no   { background: var(--red-bg);    color: var(--red); }
+  .badge.partial { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.na   { background: var(--orange-bg); color: var(--orange); }
+
+  /* ── DETAIL TABLE (2-col) ── */
+  .detail-table th:first-child { width: 42%; }
+  .detail-table td:first-child { font-weight: 600; color: var(--navy); }
+  .detail-table td:not(:first-child) { text-align: left; color: var(--gray); }
+  .detail-table tr.na-row td:first-child { color: var(--orange) !important; }
+  .detail-table tr.na-row td { background: #FFF7ED !important; }
+
+  /* ── JSON FIELD CHIP ── */
+  .field-chip {
+    display: inline-block; background: #F1F5F9; border: 1px solid #CBD5E1;
+    border-radius: 3px; padding: 1px 7px; font-size: 11px; font-family: monospace;
+    color: #475569; margin: 1px 2px;
+  }
+  .field-chip.na { background: #FFF7ED; border-color: #FDBA74; color: #C2410C; }
+
+  .page-break { border: none; border-top: 2px dashed #E5E7EB; margin: 40px 0; }
+
+  .confidential {
+    text-align: center; margin-top: 40px; padding: 12px;
+    border-top: 1px solid var(--border); font-size: 11px;
+    color: #9CA3AF; letter-spacing: 2px; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ══════════════════ COVER ══════════════════ -->
+  <div class="cover">
+    <h1>Data Gap Analysis Report</h1>
+    <h2>Data Transportation.Gov vs. Carrier-OK Enriched Platform — Complete Field Reference</h2>
+    <div class="legend">
+      <div class="legend-item"><span class="badge yes">Yes</span> Available in both / Carrier-OK</div>
+      <div class="legend-item"><span class="badge partial">Partial</span> Limited availability</div>
+      <div class="legend-item"><span class="badge no">No</span> Not in FMCSA</div>
+      <div class="legend-item"><span class="badge na">N/A in Report</span> In API but NOT in original report</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ SECTION 1 ══════════════════ -->
+  <div class="section">
+    <div class="section-title">1. Executive Summary</div>
+    <p class="body-text">
+      This report provides a comprehensive comparison between the raw data available through the Federal Motor Carrier Safety Administration (FMCSA) public database and the enriched data provided by the Carrier-OK platform. This updated version annotates all fields present in the Carrier-OK API response that were <strong>not previously documented</strong> in the original report — marked throughout as <span class="badge na">N/A in Report</span>.
+    </p>
+    <div class="highlight-box">
+      Key Finding: FMCSA provides a basic compliance snapshot. Carrier-OK adds deep risk intelligence, historical timelines, fraud detection, and operational analytics not available anywhere in the FMCSA database. The API response contains <strong>150+ additional fields</strong> beyond the original report's scope.
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Data Category</th><th>FMCSA</th><th>Carrier-OK</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Basic Carrier Identity</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Safety Ratings &amp; BASIC Scores</td><td><span class="badge partial">Current Only</span></td><td><span class="badge yes">Yes + Trends</span></td></tr>
+          <tr><td>Crash &amp; Inspection Records</td><td><span class="badge partial">Basic</span></td><td><span class="badge yes">Full Detail</span></td></tr>
+          <tr><td>Insurance History</td><td><span class="badge partial">Active Only</span></td><td><span class="badge yes">Full History</span></td></tr>
+          <tr><td>Risk Scoring &amp; Probability</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Network Graph / Fraud Detection</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Equipment VIN History</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Load History &amp; Shippers</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Operational Radius Analysis</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Contact Change History</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Authority Age &amp; Revocation Counts <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>BOC-3 Process Agent Detail <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Industry Benchmark Comparisons <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Historical Monthly Crash Rate / Crash Aggregates <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Geo Points Bundle (Address + Inspection + Crash) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Monitoring / Alert Subscription Results <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Equipment Summary (Fleet Composition) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Ownership Profile Classification <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Historical Address ID Tracking <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="page-break">
+
+  <!-- ══════════════════ SECTION 2 ══════════════════ -->
+  <div class="section">
+    <div class="section-title">2. What FMCSA Provides (Base Dataset)</div>
+    <p class="body-text">The FMCSA dataset is a flat, single-record snapshot per carrier. It contains the following core categories of information:</p>
+
+    <div class="sub-title">2.1 Carrier Identity &amp; Registration</div>
+    <ul class="report-list">
+      <li>Legal name, DBA name, organization type (Corporation, LLC, etc.)</li>
+      <li>USDOT number, MC docket number, EIN / DUNS number</li>
+      <li>Physical and mailing address, telephone, fax, email</li>
+      <li>Date added to FMCSA, MCS-150 filing date and mileage</li>
+    </ul>
+
+    <div class="sub-title">2.2 Operating Authority</div>
+    <ul class="report-list">
+      <li>Current authority status: Common, Contract, Broker (Active / Inactive)</li>
+      <li>Operation classification (Authorized for Hire, Exempt, Private, etc.)</li>
+      <li>Interstate vs. intrastate carrier designation</li>
+      <li>Carrier operation type (Property, Passenger, Household Goods, Hazmat)</li>
+    </ul>
+
+    <div class="sub-title">2.3 Fleet &amp; Driver Statistics</div>
+    <ul class="report-list">
+      <li>Total power units, trucks, tractors, trailers, buses</li>
+      <li>Owned vs. leased breakdown by vehicle category</li>
+      <li>Total drivers, CDL drivers, interstate/intrastate breakdown</li>
+      <li>Annual mileage as self-reported on MCS-150</li>
+    </ul>
+
+    <div class="sub-title">2.4 Safety Data (Current Snapshot Only)</div>
+    <ul class="report-list">
+      <li>Current safety rating: Satisfactory / Conditional / Unsatisfactory</li>
+      <li>BASIC measure scores and percentiles (Unsafe Driving, HOS, Vehicle Maintenance, etc.)</li>
+      <li>Total crashes, fatalities, injuries, tow-aways (aggregate counts)</li>
+      <li>Total inspections, driver OOS count, vehicle OOS count</li>
+      <li>Latest review type and date</li>
+    </ul>
+
+    <div class="sub-title">2.5 Insurance (Active Policies Only)</div>
+    <ul class="report-list">
+      <li>BIPD insurance amount on file and required minimum</li>
+      <li>Cargo insurance amount on file</li>
+      <li>Broker surety bond amount on file and required</li>
+    </ul>
+
+    <div class="sub-title">2.6 Cargo Classifications</div>
+    <ul class="report-list">
+      <li>Cargo type flags: Fresh Produce, Refrigerated Food, General Freight, Chemicals, Hazmat, Livestock, etc.</li>
+    </ul>
+  </div>
+
+  <hr class="page-break">
+
+  <!-- ══════════════════ SECTION 3 ══════════════════ -->
+  <div class="section">
+    <div class="section-title">3. What Carrier-OK Adds (Exclusive Enriched Data)</div>
+    <p class="body-text">The following categories exist in Carrier-OK but are NOT available through the FMCSA public database. Rows and subsections marked <span class="badge na">N/A in Report</span> were present in the API response but not documented in the original report.</p>
+
+    <!-- 3.1 -->
+    <div class="sub-title">3.1 Risk Intelligence &amp; Scoring</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Risk Score</td><td>Overall classification: Low / Medium / High</td></tr>
+          <tr><td>Risk Score Probability</td><td>Numerical score (e.g., 0.5617 = 56.2% risk)</td></tr>
+          <tr><td>ISS Score</td><td>Inspection Selection System score (e.g., 45 = PASS)</td></tr>
+          <tr><td>ISS Recommendation</td><td>PASS / INSPECT with reason string</td></tr>
+          <tr><td>30+ Individual Risk Flags</td><td>e.g., safety_rating_conditional, carrier_w_brokerage_authority, virtual_physical_mailing_address, bipd_insurance_above_minimum</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Safety Score <span class="field-chip na">safety_score</span></td><td>Composite safety score (separate from risk_score_probability)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Indicator: Carrier Safety <span class="field-chip na">indicator_carrier_safety</span></td><td>Boolean flag — overall carrier safety indicator</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Indicator: Industry Benchmarks <span class="field-chip na">indicator_industry_benchmarks</span></td><td>Boolean flag — whether carrier triggers any benchmark alert</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Indicator: Network Graph Contact <span class="field-chip na">indicator_network_graph_contact</span></td><td>Boolean flag — contact info shared with other carriers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Indicator: Network Graph Equipment <span class="field-chip na">indicator_network_graph_equipment</span></td><td>Boolean flag — equipment VINs shared with other carriers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Indicator: Address History <span class="field-chip na">indicator_address_history</span></td><td>Boolean flag — frequent address changes detected</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Ownership Profile <span class="field-chip na">ownership_profile</span></td><td>Classification of fleet ownership model (e.g., owned_fleet)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="na-notice">⚠ The following Risk Factor flags are present in the API (<span class="field-chip na">risk_factors[]</span>) but were NOT itemized in the original report:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Risk Flag Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">consecutive_authority</span></td><td>Carrier has held authority consecutively without gap</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">sixty_mo_in_business</span></td><td>Carrier has been operating 60+ months</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">revocation_last_thirtysix_mo</span></td><td>Authority revoked within the last 36 months</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">zeo_inspections_last_twelve_mo</span></td><td>Zero inspections in the past 12 months</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">active_usdot_status</span></td><td>USDOT is currently active</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">violations_severe_flag</span></td><td>One or more severe violations on record</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">basic_alert_flag</span></td><td>Any BASIC category is currently in alert status</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">basic_ac_indicator_flag</span></td><td>Any BASIC category has Adverse Conditions (AC) indicator</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">fatal_crashes_flag</span></td><td>Carrier has had at least one fatal crash</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">secondary_contact_info_provided</span></td><td>Secondary contact info on file</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">primary_contact_info_missing</span></td><td>No primary contact provided</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">multi_cargo_classification</span></td><td>Carrier hauls more than one cargo category</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">interstate_carrier_single_state_inspection</span></td><td>Interstate carrier only inspected in one state</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">bipd_insurance_below_requirement</span></td><td>BIPD coverage is below FMCSA minimum requirement</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">bond_insurance_below_requirement</span></td><td>Broker bond below required $75,000</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">cargo_insurance_on_file</span></td><td>Cargo insurance policy currently on file</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">boc3_on_file</span></td><td>BOC-3 blanket process agent filing is on file</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">pending_insurance_cancellation</span></td><td>Current insurance policy has a pending cancellation</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">ins_rrg_active</span></td><td>Current insurance carrier is a Risk Retention Group (active)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">ins_rrg_hist</span></td><td>Historical insurance carrier was a Risk Retention Group</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">no_active_authority</span></td><td>Carrier has no active operating authority</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">not_authorized_for_hire</span></td><td>Carrier is not classified as authorized for hire</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">mcs150_filed_last_24_months</span></td><td>MCS-150 biennial update filed within last 24 months</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">oos_below_industry_average</span></td><td>Out-of-service rates are below national averages</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">dot_out_of_service</span></td><td>DOT has issued an out-of-service order on this carrier</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">driver_only_inspections</span></td><td>All inspections to date have been driver-only (no vehicle)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">phone_number_area_codes_match_address_state</span></td><td>Phone area code matches state of physical address</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_name_history</span></td><td>Legal name has been stable (no changes)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_email_history</span></td><td>Email has been stable (no changes)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_phone_history</span></td><td>Phone has been stable (no changes)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_address_history</span></td><td>Address has been stable (no changes)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_contact_history</span></td><td>Contact person has been stable (no changes)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">stability_insurance_history</span></td><td>Insurance carrier has been stable (no cancellations)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.2 -->
+    <div class="sub-title">3.2 BASIC Safety Score Monthly History</div>
+    <p class="body-text">Unlike FMCSA which shows only current scores, Carrier-OK tracks month-by-month BASIC trends going back 24+ months:</p>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Monthly Snapshot Field</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Unsafe Driving BASIC Measure</td><td>Monthly trend (e.g., range 1.96 – 7.7 over 24 months)</td></tr>
+          <tr><td>Hours-of-Service BASIC Measure</td><td>Monthly trend with alert threshold tracking</td></tr>
+          <tr><td>Vehicle Maintenance BASIC Measure</td><td>Historical compliance tracking</td></tr>
+          <tr><td>AC Indicator Flags per Month</td><td>Whether carrier was in adverse conditions intervention per BASIC</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspections with Violations per BASIC per Month <span class="field-chip na">inspections_w_violations_*</span></td><td>Count of inspections that produced violations in each BASIC category, per monthly snapshot</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Alert Flags per BASIC per Month <span class="field-chip na">basic_alert_*</span></td><td>Whether each BASIC category hit alert threshold that month (present in most recent snapshot)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> BASIC Percentile per Month <span class="field-chip na">basic_percentile_unsafe_driving</span></td><td>Percentile rank among peers for each BASIC (present in most recent snapshot, e.g., 0.215 = 21.5th percentile)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Vehicle Inspections per Month <span class="field-chip na">inspections_vehicle</span></td><td>Count of vehicle-level inspections per monthly snapshot</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Roadside Alert Flags per BASIC <span class="field-chip na">basic_roadside_alert_*</span></td><td>Whether each BASIC category triggered a roadside alert flag</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Intervention Thresholds per BASIC <span class="field-chip na">intervention_threshold_*</span></td><td>Numeric threshold at which FMCSA intervention is triggered per BASIC category</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Crash Indicator BASIC Measure <span class="field-chip na">basic_measure_crash_indicator</span></td><td>BASIC Crash Indicator score and alert/roadside alert flags</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Per-BASIC Violation Breakdowns <span class="field-chip na">violations_unsafe_driving / violations_severe_* / violations_oos_*</span></td><td>Separate violation counts (total, severe, OOS) per BASIC category</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> National OOS Averages <span class="field-chip na">natl_avg_oos_vehicle / natl_avg_oos_driver / natl_avg_oos_hazmat</span></td><td>National average OOS rates for vehicle, driver, and hazmat inspections used for benchmarking</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> OOS Rate Percentages <span class="field-chip na">inspections_vehicle_out_of_service_pct / inspections_driver_out_of_service_pct</span></td><td>Carrier's own OOS percentage vs. national average</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.3 -->
+    <div class="sub-title">3.3 Full Crash Detail Records</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Crash GPS Coordinates</td><td>Exact lat/long for every crash event</td></tr>
+          <tr><td>Road &amp; Weather Conditions</td><td>e.g., Ice, Sleet/Hail, No Adverse Conditions</td></tr>
+          <tr><td>Light Conditions</td><td>e.g., Dark - Not Lighted, Daylight</td></tr>
+          <tr><td>Vehicle Configuration</td><td>e.g., Tractor/Semitrailer, Single-Unit Truck</td></tr>
+          <tr><td>Crash Event Sequence</td><td>Step-by-step: Fire → Collision Involving Fixed Object</td></tr>
+          <tr><td>Severity &amp; Time Weights</td><td>FMCSA scoring weights for each crash event</td></tr>
+          <tr><td>Investigating Agency</td><td>e.g., Virginia Local Police, NJ State Police</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Report State &amp; Report Number <span class="field-chip na">report_state / report_number</span></td><td>State and official report number for each crash (e.g., VA0250505091)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Crash Time <span class="field-chip na">report_time</span></td><td>Exact time of crash in HHMM format (e.g., 0407 = 4:07 AM)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> County Name &amp; Code <span class="field-chip na">county_name / county_code</span></td><td>County where crash occurred (e.g., Hanover County, VA)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Trafficway Description <span class="field-chip na">trafficway_desc</span></td><td>Type of roadway (e.g., Two-Way Trafficway, Divided, Positive Barrier)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Access Control <span class="field-chip na">access_control_desc</span></td><td>Roadway access control type (e.g., Full Control = limited access highway)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Cargo Body Type <span class="field-chip na">cargo_body_type_desc</span></td><td>Type of cargo body on crashed vehicle (e.g., Van/Enclosed Box, Other)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Crashed Vehicle VIN &amp; License <span class="field-chip na">vehicle_identification_number / vehicle_license_number</span></td><td>VIN and license plate of the specific vehicle involved in each crash</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Hazmat Placard &amp; Release <span class="field-chip na">vehicle_hazmat_placard / hazmat_released</span></td><td>Whether vehicle displayed hazmat placard and whether hazmat was released</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Vehicles in Accident Count <span class="field-chip na">vehicles_in_accident</span></td><td>Total number of vehicles involved in each crash event</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Federal &amp; State Recordable Flags <span class="field-chip na">federal_recordable / state_recordable</span></td><td>Whether crash meets federal and/or state recordability thresholds</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Not Preventable Flag <span class="field-chip na">not_preventable</span></td><td>Whether crash was determined to be not preventable by the carrier</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Included in SMS Flag <span class="field-chip na">included_in_sms_flag</span></td><td>Whether this crash is currently counted in FMCSA Safety Measurement System scoring</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> CI Status &amp; Final Status Date <span class="field-chip na">ci_status_code / final_status_date</span></td><td>Crash record status code and date the record was finalized</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="na-notice">⚠ Crash Aggregates (<span class="field-chip na">crash_aggregates[]</span>) — entire object NOT in original report:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">report_month</span></td><td>Month of crash aggregate snapshot (goes back to 1994-08-01 for this carrier)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">crashes_total / crashes_total_recordable</span></td><td>Total and federally recordable crash counts per month</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">crash_rate</span></td><td>Crash rate per 1M vehicle miles traveled for that month (e.g., 2.08)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">crash_rate_recordable</span></td><td>Recordable crash rate per 1M VMT</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">vehicle_miles_traveled</span></td><td>Reported VMT for that snapshot period</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.4 -->
+    <div class="sub-title">3.4 Full Inspection &amp; Violation Detail</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Violation Code &amp; Description</td><td>e.g., Seat belt violation, False HOS log, Lane restriction</td></tr>
+          <tr><td>BASIC Group Assignment</td><td>Which BASIC category each violation affects</td></tr>
+          <tr><td>OOS Indicator per Violation</td><td>Whether each violation triggered an Out-of-Service order</td></tr>
+          <tr><td>Severity &amp; Time Weights</td><td>Numerical weights used in FMCSA SMS scoring</td></tr>
+          <tr><td>VINs Inspected per Event</td><td>Which specific vehicles were on the inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspection Start &amp; End Time <span class="field-chip na">insp_start_time / insp_end_time</span></td><td>Exact start and end time of each inspection event</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspection Facility Type <span class="field-chip na">insp_facility</span></td><td>R = Roadside, F = Fixed facility (weigh station/port of entry)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Location Description <span class="field-chip na">location_desc</span></td><td>Named location of inspection (e.g., I 95 NB ACUSENSUS MM 127, H-WILMINGTON)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> County Name &amp; State <span class="field-chip na">county_name / county_code_state</span></td><td>County where inspection occurred (e.g., Middlesex, MA)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Gross Combined Vehicle Weight <span class="field-chip na">gross_comb_veh_wt</span></td><td>GCW at time of inspection (e.g., 120,000 lbs)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspection Type Flags <span class="field-chip na">unsafe_insp / fatigued_insp / dr_fitness_insp / subt_alcohol_insp / vh_maint_insp / hm_insp</span></td><td>Which BASIC categories were evaluated in each inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Per-BASIC Violation Counts per Inspection <span class="field-chip na">unsafe_viol / fatigued_viol / vh_maint_viol / hm_viol</span></td><td>How many violations fell into each BASIC category for that inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Enforcement Type Flags <span class="field-chip na">alcohol_control_sub / drug_intrdctn_search / size_weight_enf / traffic_enf</span></td><td>Type of enforcement action that triggered the inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Drug Interdiction Arrests <span class="field-chip na">drug_intrdctn_arrests</span></td><td>Number of arrests resulting from drug interdiction search</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> OOS Total per Inspection <span class="field-chip na">oos_total</span></td><td>Total out-of-service orders issued at this inspection event</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Subtotals per Inspection <span class="field-chip na">driver_viol_total / vehicle_viol_total / hazmat_viol_total</span></td><td>Driver, vehicle, and hazmat violation counts per inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Hazmat Sent Count <span class="field-chip na">total_hazmat_sent</span></td><td>Number of hazmat compliance notifications sent from this inspection</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspection Time Weight <span class="field-chip na">time_weight</span> (per inspection)</td><td>Time decay weight applied to this inspection in SMS scoring (1–3)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspection Level ID <span class="field-chip na">insp_level_id</span></td><td>CVSA inspection level (e.g., Level 3 = Driver-Only)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Group Description <span class="field-chip na">viol_group_desc</span></td><td>Sub-group within BASIC category (e.g., False Log, Seat Belt, Misc Violations, Incomplete/Wrong Log)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Category Description <span class="field-chip na">viol_category_desc</span></td><td>Enforcement category (e.g., Traffic Enforcement, False Log Book, All Other HOS)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Type <span class="field-chip na">viol_type</span></td><td>DRIVER vs. VEHICLE classification per violation</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Unit Description <span class="field-chip na">viol_unit_desc</span></td><td>Whether violation applies to Driver or Vehicle Primary Unit</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> OOS Weight per Violation <span class="field-chip na">oos_weight</span></td><td>Numeric OOS weight used in SMS scoring (separate from severity weight)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Total Severity Weight per Violation <span class="field-chip na">total_severity_weight</span></td><td>Final computed severity weight after all adjustments</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Defect Verification Description <span class="field-chip na">defect_verification_desc</span></td><td>OOS/Non-OOS classification detail (e.g., Non-OOS/Driver Non-OOS)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Violation Change Date <span class="field-chip na">change_date</span></td><td>Date the violation record was last updated in the system</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> SMS Inclusion Flag <span class="field-chip na">included_in_sms_flag</span></td><td>Whether this violation is currently counted in SMS scoring</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.5 -->
+    <div class="sub-title">3.5 Equipment VIN-Level History</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Full VIN Numbers</td><td>Each tractor and trailer individually tracked</td></tr>
+          <tr><td>Make, Model, Model Year</td><td>e.g., Peterbilt 579 (2015), Great Dane Reefer (2024)</td></tr>
+          <tr><td>Inspections per VIN</td><td>How many times each specific vehicle was inspected</td></tr>
+          <tr><td>Multi-DOT Flag</td><td>Whether equipment is shared with another carrier</td></tr>
+          <tr><td>GVWR Class</td><td>e.g., Class 8: 33,001 lb and above</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> License Plate per VIN <span class="field-chip na">insp_unit_license / insp_unit_license_state</span></td><td>Most recent license plate and state for each vehicle</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Carrier Unit Number <span class="field-chip na">insp_unit_company</span></td><td>Carrier's internal unit/fleet number for that vehicle</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Last Inspection Date per VIN <span class="field-chip na">last_inspection_date_vin / last_inspection_date_vin_dot</span></td><td>Most recent inspection date for this specific VIN (overall and under this DOT)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Last Inspected Under DOT <span class="field-chip na">last_inspected_under_dot</span></td><td>Which DOT number was associated when this VIN was last inspected</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Most Recent Inspection Flag <span class="field-chip na">most_recent_inspection_flag</span></td><td>Whether this is the most recently inspected VIN for the carrier</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Distinct DOT Count per VIN <span class="field-chip na">countd_dots_vin</span></td><td>Number of distinct DOT numbers this VIN has appeared under</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Inspections Under This DOT vs. All DOTs <span class="field-chip na">inspections_total_vin_dot vs inspections_total_vin</span></td><td>Separates inspection count under current DOT from lifetime total across all carriers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Body Class &amp; Cab Type <span class="field-chip na">body_class / body_cab_type / ncsa_body_type</span></td><td>Vehicle body classification (e.g., Truck-Tractor, MDHD Conventional cab)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Fuel Type <span class="field-chip na">fuel_type_primary</span></td><td>Primary fuel type (e.g., Diesel)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Trailer Type &amp; Length <span class="field-chip na">trailer_type / trailer_length</span></td><td>Trailer connection type (e.g., Kingpin) and length in feet (e.g., 53 ft)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Trailer Body Type <span class="field-chip na">trailer_body_type / other_trailer_info</span></td><td>e.g., Box or Van Enclosed Trailer; Semitrailer - dry freight, reefer, or insulated van</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Equipment Summary Object <span class="field-chip na">equipment_summary</span></td><td>Aggregated fleet composition: primary and secondary category counts (e.g., 4 Truck Tractors, 3 Reefer Trailers)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.6 -->
+    <div class="sub-title">3.6 Load &amp; Shipper History</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Shipper Names</td><td>Actual customer names (e.g., Costco Wholesale)</td></tr>
+          <tr><td>FTL vs. LTL Breakdown</td><td>Full Truckload vs. Less-than-Truckload percentages</td></tr>
+          <tr><td>Deadhead Percentage</td><td>% of empty/repositioning miles</td></tr>
+          <tr><td>First &amp; Last Load Dates</td><td>Timeline of carrier activity in the market</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Total Load Count <span class="field-chip na">total_loads</span></td><td>Total number of loads observed in the system (e.g., 2)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Raw FTL &amp; LTL Counts <span class="field-chip na">ftl_loads / ltl_loads / deadheads</span></td><td>Absolute counts of FTL loads, LTL loads, and deadhead moves (in addition to percentages)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Per-Shipper First &amp; Last Load Date <span class="field-chip na">first_load_date / last_load_date</span> (per shipper)</td><td>Individual activity dates for each shipper relationship (e.g., Costco: 2025-08-25 to 2025-08-25)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Load Board / Broker References <span class="field-chip na">key: "461464"</span></td><td>Anonymous load board or broker IDs alongside named shippers</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.7 -->
+    <div class="sub-title">3.7 Operational Radius Analysis</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Max Observed Radius</td><td>Farthest observed distance from home base (e.g., 315.1 miles)</td></tr>
+          <tr><td>Radius Percentile Distribution</td><td>P25 / P75 / P95 / P99 trip distance bands</td></tr>
+          <tr><td>Operation Band Classification</td><td>Local / Short-Haul / Intermediate / Long-Haul</td></tr>
+          <tr><td>Mismatch Flag</td><td>Whether reported operation type matches actual observed behavior</td></tr>
+          <tr><td>Preferred Lanes by State</td><td>States where carrier is most frequently inspected</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Median &amp; Average Miles <span class="field-chip na">median_miles / avg_miles</span></td><td>Median trip radius (276.5 mi) and average trip radius (237.7 mi)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> % Inspections / Vehicles Within 100 Miles <span class="field-chip na">pct_inspections_within_100mi / pct_vehicles_within_100mi</span></td><td>What share of operations are local (20% inspections, 25% vehicles within 100 mi)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Observation Count &amp; Distinct Vehicles <span class="field-chip na">observation_count / distinct_vehicle_count</span></td><td>Total data points used in radius analysis and number of distinct vehicles observed</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> First &amp; Last Observation Date <span class="field-chip na">first_observation / last_observation</span></td><td>Date range of radius observations (2024-06-25 to 2026-01-02)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Per-Band Breakdown <span class="field-chip na">bands.local / bands.short_haul / bands.intermediate / bands.long_haul</span></td><td>Inspection count, inspection %, vehicle count, vehicle % for each distance band (local / short / intermediate / long / extra-long haul)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Reported Drivers Within 100 Miles <span class="field-chip na">reported_pct_drivers_within_100mi</span></td><td>Self-reported % of drivers operating within 100 miles (from MCS-150)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Mismatch Reasons Array <span class="field-chip na">mismatch_reasons[]</span></td><td>Specific reasons when reported vs. observed operation type differ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.8 -->
+    <div class="sub-title">3.8 Contact &amp; Address Change History</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>Legal Name History</td><td>e.g., "NARDELLI BROTHERS INC" → "NARDELLI BROS INC" (2007)</td></tr>
+          <tr><td>Email Change History</td><td>AOL email replaced by corporate domain in 2025</td></tr>
+          <tr><td>Address Change History</td><td>All previous addresses with effective date ranges</td></tr>
+          <tr><td>Contact Person History</td><td>All primary contacts with tenure periods</td></tr>
+          <tr><td>Change Counts</td><td>How many times each field has been updated</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Telephone Change History <span class="field-chip na">contact_history[key=telephone_number]</span></td><td>All historical phone numbers with effective date ranges</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Fax Number History <span class="field-chip na">contact_history[key=fax_number]</span></td><td>All historical fax numbers with effective date ranges</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Authority-Side Contact History <span class="field-chip na">contact_history[key=legal_name_authority / physical_address_authority / mailing_address_authority]</span></td><td>Separate history for authority-record contact fields vs. carrier record fields</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Phone Change Count <span class="field-chip na">phone_change_count</span></td><td>Number of times phone number has changed (0 for this carrier)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Address IDs Array <span class="field-chip na">address_ids[]</span></td><td>Internal system address IDs with historical tracking and date ranges — used for network graph address matching</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Email Domain <span class="field-chip na">email_domain</span></td><td>Domain portion of email address only (e.g., NARDELLIBROSINC) — used for domain-level deduplication</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Current Flag per History Entry <span class="field-chip na">current_flag</span></td><td>Boolean indicating whether each historical contact entry is currently active</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.9 -->
+    <div class="sub-title">3.9 Full Insurance Policy History</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr><td>All Historical Policies</td><td>Complete policy list going back to 1985</td></tr>
+          <tr><td>Cancelled / Replaced Policies</td><td>Prior cancellations with reason codes (Cancelled / Replaced)</td></tr>
+          <tr><td>Insurance Carrier Names</td><td>e.g., Farm Family Casualty, American States Insurance</td></tr>
+          <tr><td>Cancel Count &amp; Last Date</td><td>Total cancellations and most recent cancel event</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Insurance Status Code <span class="field-chip na">insurance_status</span></td><td>A = Active, H = Historical — per-policy status code</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Insurance Form Code <span class="field-chip na">insurance_form_code</span></td><td>FMCSA filing form (e.g., 91X = motor carrier liability, 84 = surety bond)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Underlying Limit Amount <span class="field-chip na">underlying_limit_amount</span></td><td>Underlying coverage limit beneath umbrella/excess policies</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Minimum Coverage Amount per Policy <span class="field-chip na">minimum_coverage_amount</span></td><td>Required minimum coverage at time of each policy filing (e.g., $750,000 vs $1,000,000)</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Risk Retention Group Flags <span class="field-chip na">ins_rrg_active / ins_rrg_hist</span></td><td>Whether any current or historical insurer was a Risk Retention Group (RRG) — elevated risk signal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.10 -->
+    <div class="sub-title">3.10 Network Graph / Fraud Detection</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Data Point</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Shared Physical Address</td><td>Other carriers registered at the same address</td></tr>
+          <tr><td>Shared Phone / Fax / Email</td><td>Contact info shared across multiple DOT entities</td></tr>
+          <tr><td>Shared EIN / DUNS</td><td>Financial identifiers linked to multiple carriers</td></tr>
+          <tr><td>Shared Equipment VINs</td><td>Vehicles appearing under multiple DOT numbers</td></tr>
+          <tr><td>Network Graph Count</td><td>Number of connected entities per data identifier</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Shared Cellphone Numbers <span class="field-chip na">network_graph_count_cellphone_numbers / network_graph_cellphone_number[]</span></td><td>Mobile/cellphone numbers shared across multiple DOT entities</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Shared Mailing Address Graph <span class="field-chip na">network_graph_count_mailing_address / network_graph_mailing_address[]</span></td><td>Mailing address (separate from physical) shared with other carriers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Shared Power Units Count <span class="field-chip na">network_graph_count_power_units / shared_power_units</span></td><td>Number of power unit VINs shared across multiple DOT numbers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Shared Trailers Count <span class="field-chip na">network_graph_count_trailers / shared_trailers</span></td><td>Number of trailer VINs shared across multiple DOT numbers</td></tr>
+          <tr class="na-row"><td><span class="badge na">N/A in Report</span> Extended Equipment Network Graph <span class="field-chip na">network_graph_equipment_ext[]</span></td><td>Extended cross-carrier equipment sharing records with additional metadata</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.11 NEW -->
+    <div class="sub-title">3.11 Authority History Detail <span class="badge na">N/A in Report</span></div>
+    <div class="na-notice">⚠ The full <span class="field-chip na">authority_history[]</span> object was not documented in the original report. It contains the following fields per event:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">authority_type_desc</span></td><td>Type of authority event (e.g., Motor Property Contract Carrier, Property Broker)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">original_action_desc</span></td><td>Action taken (e.g., Granted, Reinstated)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">original_served_date</span></td><td>Date original action was served (e.g., 1983-11-30 = first authority granted)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">dispensation_action_desc</span></td><td>Disposition of this authority record (e.g., Revoked)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">dispensation_served_date</span></td><td>Date the revocation or other disposition was served</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">total_revocations</span></td><td>Total revocation events across all authority types (e.g., 8)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">days_since_last_revocation</span></td><td>Days elapsed since the most recent revocation (e.g., 4,527 days)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">authority_age_contract / authority_age_broker</span></td><td>Age in days of current contract (7,531) and broker (4,515) authority</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">authority_age_contract_active / authority_age_broker_active</span></td><td>Days current authority has been continuously active</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">authority_start_contract / authority_start_broker</span></td><td>Start date of currently active contract and broker authority</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">authority_contract_last_revocation_date / authority_broker_last_revocation_date</span></td><td>Date of most recent revocation per authority type</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">authority_common / authority_common_pending / authority_common_review / authority_common_revocation</span></td><td>Full status flags for Common Carrier authority (active, pending, under review, revoked)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.12 NEW -->
+    <div class="sub-title">3.12 Industry Benchmark Analysis <span class="badge na">N/A in Report</span></div>
+    <div class="na-notice">⚠ The benchmark comparison fields were entirely absent from the original report:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">observed_IM / expected_lb_IM / expected_ub_IM</span></td><td>Observed vs. expected lower/upper bound for Inspection-to-Mileage ratio (5 observed, expected 3–16)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">observed_IRPU / expected_lb_IRPU / expected_ub_IRPU</span></td><td>Observed vs. expected Inspected Power Units ratio (4 observed, expected 1–9)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">observed_PUM / expected_lb_PUM / expected_ub_PUM</span></td><td>Observed vs. expected Power Unit Mileage ratio (9 observed, expected 3–8 — exceeds upper bound)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">indicator_benchmark_inspection_mileage_ratio</span></td><td>Boolean alert — carrier outside expected inspection-to-mileage range</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">indicator_benchmark_inspected_power_units_ratio</span></td><td>Boolean alert — carrier outside expected inspected power units range</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">indicator_benchmark_power_unit_mileage_ratio</span></td><td>Boolean alert — carrier outside expected power unit mileage range</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.13 NEW -->
+    <div class="sub-title">3.13 BOC-3 Process Agent Detail <span class="badge na">N/A in Report</span></div>
+    <div class="na-notice">⚠ BOC-3 data was not documented in the original report:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description / Example</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">boc3_company_name</span></td><td>Name of blanket process agent company (e.g., PROCESS AGENT SERVICE COMPANY, INC.)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">boc3_attn</span></td><td>Contact person at BOC-3 agent (e.g., SANDY ROSE)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">boc3_address_street / boc3_address_city / boc3_address_state / boc3_address_zip_code</span></td><td>Full mailing address of BOC-3 process agent (945 S. Marion Rd., Sioux Falls, SD 57106)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">boc3_on_file</span> (risk flag)</td><td>Boolean confirming a valid BOC-3 filing exists for this carrier</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.14 NEW -->
+    <div class="sub-title">3.14 Geo Points Bundle <span class="badge na">N/A in Report</span></div>
+    <div class="na-notice">⚠ The <span class="field-chip na">geo_points[]</span> object consolidates all spatial data in one place and was not documented in the original report:</div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">physical_address_zip_code.lat / .lon</span></td><td>Geocoordinates derived from physical address ZIP code</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">mailing_address_zip_code.lat / .lon</span></td><td>Geocoordinates derived from mailing address ZIP code</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">inspection_locations[].lat / .lon / .date</span></td><td>GPS location + date for every inspection event (bundled together)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">crash_locations[].lat / .lon / .date</span></td><td>GPS location + date for every crash event (bundled together)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.15 NEW -->
+    <div class="sub-title">3.15 Monitoring / Alert Subscription Results <span class="badge na">N/A in Report</span></div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">monitoringResults.total_count</span></td><td>Number of active monitoring alerts/subscriptions on this carrier</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">monitoringResults.items[]</span></td><td>Array of alert subscription results (e.g., insurance cancellation alerts, authority change alerts)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.16 NEW -->
+    <div class="sub-title">3.16 Additional Carrier-Level Fields <span class="badge na">N/A in Report</span></div>
+    <div class="table-wrap">
+      <table class="detail-table">
+        <thead><tr><th>Field <span class="badge na">N/A in Report</span></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr class="na-row"><td><span class="field-chip na">docket_prefix / docket</span></td><td>MC docket prefix and formatted docket string (e.g., MC168792)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">dot_age</span></td><td>Age of the USDOT number in days (e.g., 18,958 days)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">added_date</span></td><td>Date carrier was first added to FMCSA system (1974-06-01 for this carrier)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">mcs150_year / mcs151_year</span></td><td>Year of most recent MCS-150 filing (2025) and MCS-151 compliance review (2013)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">last_revocation_date / last_violation_date / last_crash_date / last_inspection_date</span></td><td>Four key "last event" dates computed and surfaced as top-level fields</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">safety_rating_date</span></td><td>Date the current safety rating was assigned (2013-10-16)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">snapshot_date</span></td><td>Date the Carrier-OK data snapshot was last refreshed (2026-04-27)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">dba_flag</span></td><td>Boolean — whether carrier operates under a DBA name</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">undeliverable_physical_address / undeliverable_mailing_address</span></td><td>Whether USPS has flagged either address as undeliverable</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">out_of_service_flag</span></td><td>Boolean — whether carrier is currently under OOS order</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">smartway_flag / carbtru_flag / phmsa_flag</span></td><td>EPA SmartWay partner flag, CARB TRU compliance flag, PHMSA registration flag</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">hazardous_material</span></td><td>Boolean — whether carrier is registered to haul hazardous materials</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">inspected_states / inspected_power_units / inspected_trailers</span></td><td>Number of distinct states, power units, and trailers that have been inspected</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">num_drivers_interstate_beyond_100mi</span></td><td>Number of drivers operating interstate beyond 100-mile radius</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">avg_trip_leased_drivers</span></td><td>Average trip miles for leased drivers</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">physical_address_authority / mailing_address_authority</span></td><td>Separate authority-record addresses (may differ from operating carrier addresses)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">physical_telephone_number_authority</span></td><td>Phone number on file with the authority record (may differ from carrier record)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">indicator_authority / indicator_insurance</span></td><td>Top-level boolean indicators — whether authority and insurance are both in order</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">private / enterprise / household_goods / passenger / property</span></td><td>Entity type flags beyond the text description</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">icc_dockets</span></td><td>Legacy ICC docket numbers carried over from pre-FMCSA era</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">doc_id</span></td><td>Internal Carrier-OK document ID (DOT + MC concatenation, e.g., 25513-MC168792)</td></tr>
+          <tr class="na-row"><td><span class="field-chip na">ownership_profile</span></td><td>Carrier fleet ownership model classification (e.g., owned_fleet)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="page-break">
+
+  <!-- ══════════════════ SECTION 4 ══════════════════ -->
+  <div class="section">
+    <div class="section-title">4. Complete Data Availability Summary</div>
+    <p class="body-text">All rows marked <span class="badge na">N/A in Report</span> were present in the Carrier-OK API response but were not documented in the original report. Orange rows represent newly identified data categories.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Data Category</th><th>FMCSA</th><th>Carrier-OK</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Carrier Identity &amp; Registration</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Current Operating Authority Status</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Fleet &amp; Driver Counts</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Current Safety Rating</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Current BASIC Scores &amp; Percentiles</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Current Active Insurance</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Cargo Classification Flags</td><td><span class="badge yes">Yes</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Authority Grant/Revocation Timeline</td><td><span class="badge partial">Partial</span></td><td><span class="badge yes">Yes (Full)</span></td></tr>
+          <tr><td>BASIC Score Monthly History (2+ years)</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Risk Score &amp; Probability</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>ISS Score &amp; Recommendation</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>30+ Granular Risk Flags</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Full Crash Detail (GPS, Weather, Conditions)</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Crash Event Sequence Detail</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Full Inspection Records with Violations</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Violation Codes &amp; Descriptions</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Violation Severity &amp; Time Weights</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Equipment VIN-Level History</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Make/Model/Year per Vehicle</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Load History &amp; Shipper Names</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>FTL / LTL / Deadhead Breakdown</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Operational Radius Analysis</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Preferred Lane Analysis by State</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Full Contact / Address Change History</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Full Insurance Policy History (all years)</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Network Graph / Fraud Detection</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Shared Equipment Across Carriers</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr><td>Mailing/Physical Address Geo Coordinates</td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <!-- N/A rows -->
+          <tr class="na-row"><td>Authority Age (Days Active) &amp; Total Revocations <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Per-Event Authority History (Granted / Revoked / Reinstated) <span class="badge na">N/A in Report</span></td><td><span class="badge partial">Partial</span></td><td><span class="badge yes">Yes (Full)</span></td></tr>
+          <tr class="na-row"><td>BOC-3 Process Agent Full Detail <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Industry Benchmark Observed vs. Expected Ratios <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Monthly Crash Rate History (crash_aggregates) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Geo Points Bundle (Address + Inspection + Crash GPS) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Equipment Summary (Fleet Composition Aggregates) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Per-VIN License Plate, Unit No., Last Inspection Date <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Trailer Length, Type &amp; Body Classification per VIN <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Per-BASIC Violation Counts (Total, Severe, OOS) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>National OOS Averages &amp; Carrier OOS Rate % <span class="badge na">N/A in Report</span></td><td><span class="badge partial">Nat'l Avg Only</span></td><td><span class="badge yes">Yes (Both)</span></td></tr>
+          <tr class="na-row"><td>Inspection Facility Type &amp; Location Name <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Inspection Level (CVSA Level 1–6) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Enforcement Type Flags per Inspection <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Violation Sub-Group &amp; Category Descriptions <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Crash Report Number, Time, County <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Crashed Vehicle VIN &amp; License Plate <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Federal &amp; State Recordability Flags per Crash <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Trafficway Type &amp; Access Control per Crash <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Radius Analysis: Median, Average, Per-Band % <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Load Count (Raw FTL/LTL/Deadhead Counts) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Insurance Form Code &amp; Status per Policy <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Risk Retention Group Insurance Flags <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Shared Cellphone Numbers (Network Graph) <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Historical Address ID Tracking <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Monitoring / Alert Subscription Results <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>SmartWay / CARB TRU / PHMSA Flags <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Undeliverable Address Flags <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>DOT Age in Days <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+          <tr class="na-row"><td>Ownership Profile Classification <span class="badge na">N/A in Report</span></td><td><span class="badge no">No</span></td><td><span class="badge yes">Yes</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+  <div class="section-title">
+    FMCSA Raw Fields Missing From Current Carrier-OK API Response
+  </div>
+
+  <div class="table-wrap">
+    <table class="detail-table">
+      <thead>
+        <tr>
+          <th>FMCSA Field</th>
+          <th>API Field</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr class="na-row">
+          <td>STATUS_CODE</td>
+          <td><span class="field-chip na">status_code</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>SAFETY_INV_TERR</td>
+          <td><span class="field-chip na">safety_inv_terr</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>BUSINESS_ORG_ID</td>
+          <td><span class="field-chip na">business_org_id</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+        <tr class="na-row">
+          <td>MCS151_MILEAGE</td>
+          <td><span class="field-chip na">mcs151_mileage</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>TOTAL_CARS</td>
+          <td><span class="field-chip na">total_cars</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>MCS150_UPDATE_CODE_ID</td>
+          <td><span class="field-chip na">mcs150_update_code_id</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>PRIOR_REVOKE_FLAG</td>
+          <td><span class="field-chip na">prior_revoke_flag</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>PRIOR_REVOKE_DOT_NUMBER</td>
+          <td><span class="field-chip na">prior_revoke_dot_number</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>CELL_PHONE</td>
+          <td><span class="field-chip na">cell_phone</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>COMPANY_OFFICER_2</td>
+          <td><span class="field-chip na">company_officer_2</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>FLEETSIZE</td>
+          <td><span class="field-chip na">fleetsize</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>REVIEW_ID</td>
+          <td><span class="field-chip na">review_id</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+    
+
+
+        <tr class="na-row">
+          <td>PHY_BARRIO</td>
+          <td><span class="field-chip na">phy_barrio</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>MAIL_BARRIO</td>
+          <td><span class="field-chip na">mail_barrio</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>DOCKET1PREFIX</td>
+          <td><span class="field-chip na">docket1prefix</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>DOCKET2PREFIX</td>
+          <td><span class="field-chip na">docket2prefix</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>DOCKET2</td>
+          <td><span class="field-chip na">docket2</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>DOCKET3PREFIX</td>
+          <td><span class="field-chip na">docket3prefix</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>DOCKET3</td>
+          <td><span class="field-chip na">docket3</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>POINTNUM</td>
+          <td><span class="field-chip na">pointnum</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>MCSIPSTEP</td>
+          <td><span class="field-chip na">mcsipstep</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>MCSIPDATE</td>
+          <td><span class="field-chip na">mcsipdate</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>HM_IND</td>
+          <td><span class="field-chip na">hm_ind</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>INTERSTATE_WITHIN_100_MILES</td>
+          <td><span class="field-chip na">interstate_within_100_miles</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>CLASSDEF</td>
+          <td><span class="field-chip na">classdef</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+    
+        <tr class="na-row">
+          <td>DRIVER_INTER_TOTAL</td>
+          <td><span class="field-chip na">driver_inter_total</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>UNDELIV_PHY</td>
+          <td><span class="field-chip na">undeliv_phy</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>CRGO_CARGOOTHR_DESC</td>
+          <td><span class="field-chip na">crgo_cargoothr_desc</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>OWNCOACH</td>
+          <td><span class="field-chip na">owncoach</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>OWNSCHOOL_1_8</td>
+          <td><span class="field-chip na">ownschool_1_8</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>OWNSCHOOL_9_15</td>
+          <td><span class="field-chip na">ownschool_9_15</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>OWNSCHOOL_16</td>
+          <td><span class="field-chip na">ownschool_16</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+        <tr class="na-row">
+          <td>OWNBUS_16</td>
+          <td><span class="field-chip na">ownbus_16</span></td>
+          <td><span class="badge no">Missing</span></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+</div>
+  
+
+</div>
+</body>
+</html>
